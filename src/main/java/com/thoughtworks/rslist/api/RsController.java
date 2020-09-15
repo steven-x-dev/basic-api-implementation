@@ -14,9 +14,9 @@ import java.util.stream.Collectors;
 public class RsController {
 
   private List<RsEvent> rsList = new ArrayList<RsEvent>() {{
-    add(new RsEvent("第一条事件", "政治", 1));
-    add(new RsEvent("第二条事件", "经济", 2));
-    add(new RsEvent("第三条事件", "文化", 3));
+    add(new RsEvent("第一条事件", "政治"));
+    add(new RsEvent("第二条事件", "经济"));
+    add(new RsEvent("第三条事件", "文化"));
   }};
 
   @GetMapping(path = "/find")
@@ -43,16 +43,11 @@ public class RsController {
   }
 
   @PatchMapping(path = "/update")
-  public RsEvent update(@RequestBody String request) throws JsonProcessingException {
+  public RsEvent update(@RequestParam int index, @RequestBody String request) throws JsonProcessingException {
 
     RsEvent requested = new ObjectMapper().readValue(request, RsEvent.class);
 
-    int id = requested.getId();
-
-    if (rsList.stream().noneMatch(rsEvent -> rsEvent.getId() == id))
-      return requested;
-
-    RsEvent updated = rsList.stream().filter(rsEvent -> rsEvent.getId() == id).collect(Collectors.toList()).get(0);
+    RsEvent updated = rsList.get(index - 1);
 
     if (!updated.getEventName().equals(requested.getEventName()))
       updated.setEventName(requested.getEventName());
