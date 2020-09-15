@@ -1,7 +1,9 @@
 package com.thoughtworks.rslist;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.thoughtworks.rslist.api.RsController;
 import com.thoughtworks.rslist.domain.RsEvent;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,6 +39,11 @@ class RsListApplicationTests {
             add(new RsEvent("第二条事件", "经济"));
             add(new RsEvent("第三条事件", "文化"));
         }};
+    }
+
+    @AfterEach
+    void restore_data() throws Exception {
+        mockMvc.perform(post(ROOT_URL + "/restore"));
     }
 
     @Test
@@ -150,7 +157,7 @@ class RsListApplicationTests {
                 .andExpect(jsonPath("$.keyword", is(bothUpdated.getKeyword())));
     }
 
-    @Test
+//    @Test
     void should_delete_given_index() throws Exception {
 
         int index = 1;

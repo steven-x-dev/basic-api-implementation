@@ -7,17 +7,24 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping(path = "/rs")
 public class RsController {
 
-  private List<RsEvent> rsList = new ArrayList<RsEvent>() {{
-    add(new RsEvent("第一条事件", "政治"));
-    add(new RsEvent("第二条事件", "经济"));
-    add(new RsEvent("第三条事件", "文化"));
-  }};
+  private List<RsEvent> rsList;
+
+  {
+    init();
+  }
+
+  private void init() {
+    rsList = new ArrayList<RsEvent>() {{
+      add(new RsEvent("第一条事件", "政治"));
+      add(new RsEvent("第二条事件", "经济"));
+      add(new RsEvent("第三条事件", "文化"));
+    }};
+  }
 
   @GetMapping(path = "/find")
   public RsEvent find(@RequestParam int index) {
@@ -61,6 +68,11 @@ public class RsController {
   @DeleteMapping(path = "/delete")
   public RsEvent delete(@RequestParam int index) {
     return rsList.remove(index);
+  }
+
+  @PostMapping(path = "/restore")
+  public void restore() {
+    init();
   }
 
 }
