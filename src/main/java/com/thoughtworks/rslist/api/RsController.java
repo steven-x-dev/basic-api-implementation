@@ -63,4 +63,9 @@ public class RsController {
     return updated;
   }
 
+  @DeleteMapping(path = "/delete")
+  public RsEvent delete(@RequestParam int index) {
+    return rsList.remove(index);
+  }
+
 }

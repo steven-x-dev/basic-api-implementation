@@ -102,7 +102,7 @@ class RsListApplicationTests {
 
 
     @Test
-    void should_update_one_rs_event_when_supplying_one_or_more_field_given_index() throws Exception {
+    void should_update_one_rs_event_when_supplying_one_or_more_field_given_id() throws Exception {
 
         RsEvent keywordUpdated = new RsEvent("第三条事件", "时事", 3);
         String serializedKeywordUpdated = new ObjectMapper().writeValueAsString(keywordUpdated);
@@ -148,6 +148,24 @@ class RsListApplicationTests {
                 .andExpect(jsonPath("$.eventName", is(bothUpdated.getEventName())))
                 .andExpect(jsonPath("$.keyword", is(bothUpdated.getKeyword())))
                 .andExpect(jsonPath("$.id", is(bothUpdated.getId())));
+    }
+
+    @Test
+    void should_delete_given_index() throws Exception {
+
+        int index = 1;
+        RsEvent deleted = initialData.get(index);
+
+        mockMvc.perform(delete(ROOT_URL + "/delete")
+                .accept(MediaType.APPLICATION_JSON)
+                .contentType(MediaType.APPLICATION_JSON)
+                .characterEncoding(StandardCharsets.UTF_8.name())
+                .param("index", Integer.toString(index)))
+
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.eventName", is(deleted.getEventName())))
+                .andExpect(jsonPath("$.keyword", is(deleted.getKeyword())));
     }
 
 }
