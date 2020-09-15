@@ -33,9 +33,9 @@ class RsListApplicationTests {
     @BeforeEach
     void load_data() {
         initialData = new ArrayList<RsEvent>() {{
-            add(new RsEvent("第一条事件", "政治"));
-            add(new RsEvent("第二条事件", "经济"));
-            add(new RsEvent("第三条事件", "文化"));
+            add(new RsEvent("第一条事件", "政治", 1));
+            add(new RsEvent("第二条事件", "经济", 2));
+            add(new RsEvent("第三条事件", "文化", 3));
         }};
     }
 
@@ -100,5 +100,54 @@ class RsListApplicationTests {
                 .andExpect(jsonPath("$.keyword", is(added.getKeyword())));
     }
 
+
+    @Test
+    void should_update_one_rs_event_when_supplying_one_or_more_field_given_index() throws Exception {
+
+        RsEvent keywordUpdated = new RsEvent("第三条事件", "时事", 3);
+        String serializedKeywordUpdated = new ObjectMapper().writeValueAsString(keywordUpdated);
+
+        mockMvc.perform(patch(ROOT_URL + "/update")
+                .accept(MediaType.APPLICATION_JSON)
+                .contentType(MediaType.APPLICATION_JSON)
+                .characterEncoding(StandardCharsets.UTF_8.name())
+                .content(serializedKeywordUpdated))
+
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.eventName", is(keywordUpdated.getEventName())))
+                .andExpect(jsonPath("$.keyword", is(keywordUpdated.getKeyword())))
+                .andExpect(jsonPath("$.id", is(keywordUpdated.getId())));
+
+        RsEvent nameUpdated = new RsEvent("第二条热搜", "经济", 2);
+        String serializedNameUpdated = new ObjectMapper().writeValueAsString(nameUpdated);
+
+        mockMvc.perform(patch(ROOT_URL + "/update")
+                .accept(MediaType.APPLICATION_JSON)
+                .contentType(MediaType.APPLICATION_JSON)
+                .characterEncoding(StandardCharsets.UTF_8.name())
+                .content(serializedNameUpdated))
+
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.eventName", is(nameUpdated.getEventName())))
+                .andExpect(jsonPath("$.keyword", is(nameUpdated.getKeyword())))
+                .andExpect(jsonPath("$.id", is(nameUpdated.getId())));
+
+        RsEvent bothUpdated = new RsEvent("第一条热搜", "历史", 1);
+        String serializedBothUpdated = new ObjectMapper().writeValueAsString(bothUpdated);
+
+        mockMvc.perform(patch(ROOT_URL + "/update")
+                .accept(MediaType.APPLICATION_JSON)
+                .contentType(MediaType.APPLICATION_JSON)
+                .characterEncoding(StandardCharsets.UTF_8.name())
+                .content(serializedBothUpdated))
+
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.eventName", is(bothUpdated.getEventName())))
+                .andExpect(jsonPath("$.keyword", is(bothUpdated.getKeyword())))
+                .andExpect(jsonPath("$.id", is(bothUpdated.getId())));
+    }
 
 }
