@@ -157,7 +157,7 @@ class RsListApplicationTests {
                 .andExpect(jsonPath("$.keyword", is(bothUpdated.getKeyword())));
     }
 
-//    @Test
+    @Test
     void should_delete_given_index() throws Exception {
 
         int index = 1;
