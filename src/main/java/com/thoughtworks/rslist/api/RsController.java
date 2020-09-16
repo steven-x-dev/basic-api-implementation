@@ -3,6 +3,7 @@ package com.thoughtworks.rslist.api;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.thoughtworks.rslist.domain.RsEvent;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
@@ -19,30 +20,30 @@ public class RsController {
   }};
 
   @GetMapping(path = "/{index}")
-  public RsEvent find(@PathVariable int index) {
-    return rsList.get(index - 1);
+  public ResponseEntity<RsEvent> find(@PathVariable int index) {
+    return ResponseEntity.ok(rsList.get(index - 1));
   }
 
   @GetMapping
-  public List<RsEvent> list(@RequestParam(required = false) Integer start,
-                            @RequestParam(required = false) Integer end) {
+  public ResponseEntity<List<RsEvent>> list(@RequestParam(required = false) Integer start,
+                                            @RequestParam(required = false) Integer end) {
 
     if (start == null || end == null) {
-      return new ArrayList<>(rsList);
+      return ResponseEntity.ok(rsList);
     } else {
-      return new ArrayList<>(rsList.subList(start - 1, end));
+      return ResponseEntity.ok(rsList.subList(start - 1, end));
     }
   }
 
   @PostMapping
-  public RsEvent add(@RequestBody String request) throws JsonProcessingException {
+  public ResponseEntity add(@RequestBody String request) throws JsonProcessingException {
     RsEvent event = new ObjectMapper().readValue(request, RsEvent.class);
     rsList.add(event);
-    return event;
+    return ResponseEntity.created(null).header("index", Integer.toString(rsList.indexOf(event))).build();
   }
 
   @PatchMapping(path = "/{index}")
-  public RsEvent update(@PathVariable int index, @RequestBody String request) throws JsonProcessingException {
+  public ResponseEntity<RsEvent> update(@PathVariable int index, @RequestBody String request) throws JsonProcessingException {
 
     RsEvent requested = new ObjectMapper().readValue(request, RsEvent.class);
 
@@ -54,12 +55,12 @@ public class RsController {
     if (!updated.getKeyword().equals(requested.getKeyword()))
       updated.setKeyword(requested.getKeyword());
 
-    return updated;
+    return ResponseEntity.ok(updated);
   }
 
   @DeleteMapping(path = "/{index}")
-  public RsEvent delete(@PathVariable int index) {
-    return rsList.remove(index);
+  public ResponseEntity<RsEvent> delete(@PathVariable int index) {
+    return ResponseEntity.ok(rsList.remove(index));
   }
 
 }

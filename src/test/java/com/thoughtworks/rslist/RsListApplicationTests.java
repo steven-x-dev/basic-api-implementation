@@ -99,10 +99,8 @@ class RsListApplicationTests {
                 .characterEncoding(StandardCharsets.UTF_8.name())
                 .content(serialized))
 
-                .andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.eventName", is(added.getEventName())))
-                .andExpect(jsonPath("$.keyword", is(added.getKeyword())));
+                .andExpect(status().isCreated())
+                .andExpect(header().string("index", any(String.class)));
     }
 
 
