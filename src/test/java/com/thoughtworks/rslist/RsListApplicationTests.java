@@ -3,14 +3,12 @@ package com.thoughtworks.rslist;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.thoughtworks.rslist.api.RsController;
 import com.thoughtworks.rslist.domain.RsEvent;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-import org.springframework.web.context.support.WebApplicationContextUtils;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -31,18 +29,13 @@ class RsListApplicationTests {
     private List<RsEvent> initialData;
 
     @BeforeEach
-    void load_data() {
+    void init() {
         initialData = new ArrayList<RsEvent>() {{
             add(new RsEvent("第一条事件", "政治"));
             add(new RsEvent("第二条事件", "经济"));
             add(new RsEvent("第三条事件", "文化"));
         }};
         mockMvc = MockMvcBuilders.standaloneSetup(new RsController()).build();
-    }
-
-    @AfterEach
-    void restore_data() throws Exception {
-        mockMvc.perform(post(ROOT_URL + "/restore"));
     }
 
     @Test
@@ -52,7 +45,7 @@ class RsListApplicationTests {
     }
 
     private void should_find_one_rs_event_by_index(int index) throws Exception {
-        mockMvc.perform(get(ROOT_URL + "/find?index=" + index))
+        mockMvc.perform(get(ROOT_URL + "/" + index))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.eventName", is(initialData.get(index - 1).getEventName())))
@@ -64,7 +57,7 @@ class RsListApplicationTests {
 
         String serializedExpectedResult = new ObjectMapper().writeValueAsString(initialData);
 
-        mockMvc.perform(get(ROOT_URL + "/list"))
+        mockMvc.perform(get(ROOT_URL))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$", hasSize(3)))
@@ -80,7 +73,13 @@ class RsListApplicationTests {
 
         String serializedExpectedResult = new ObjectMapper().writeValueAsString(initialData.subList(start - 1, end));
 
-        mockMvc.perform(get(ROOT_URL + String.format("/list?start=%d&end=%d", start, end)))
+        mockMvc.perform(get(ROOT_URL)
+                .accept(MediaType.APPLICATION_JSON)
+                .contentType(MediaType.APPLICATION_JSON)
+                .characterEncoding(StandardCharsets.UTF_8.name())
+                .param("start", Integer.toString(start))
+                .param("end", Integer.toString(end)))
+
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$", hasSize(end - start + 1)))
@@ -94,7 +93,7 @@ class RsListApplicationTests {
         RsEvent added = new RsEvent("第四条事件", "娱乐");
         String serialized = new ObjectMapper().writeValueAsString(added);
 
-        mockMvc.perform(post(ROOT_URL + "/add")
+        mockMvc.perform(post(ROOT_URL)
                 .accept(MediaType.APPLICATION_JSON)
                 .contentType(MediaType.APPLICATION_JSON)
                 .characterEncoding(StandardCharsets.UTF_8.name())
@@ -110,14 +109,16 @@ class RsListApplicationTests {
     @Test
     void should_update_one_rs_event_when_supplying_one_or_more_field_given_id() throws Exception {
 
-        RsEvent keywordUpdated = new RsEvent("第三条事件", "时事");
+        int index1 = 3;
+
+        RsEvent keywordUpdated = initialData.get(index1 - 1);
+        keywordUpdated.setKeyword("时事");
         String serializedKeywordUpdated = new ObjectMapper().writeValueAsString(keywordUpdated);
 
-        mockMvc.perform(patch(ROOT_URL + "/update")
+        mockMvc.perform(patch(ROOT_URL + "/" + index1)
                 .accept(MediaType.APPLICATION_JSON)
                 .contentType(MediaType.APPLICATION_JSON)
                 .characterEncoding(StandardCharsets.UTF_8.name())
-                .param("index", Integer.toString(3))
                 .content(serializedKeywordUpdated))
 
                 .andExpect(status().isOk())
@@ -125,14 +126,16 @@ class RsListApplicationTests {
                 .andExpect(jsonPath("$.eventName", is(keywordUpdated.getEventName())))
                 .andExpect(jsonPath("$.keyword", is(keywordUpdated.getKeyword())));
 
-        RsEvent nameUpdated = new RsEvent("第二条热搜", "经济");
+        int index2 = 2;
+
+        RsEvent nameUpdated = initialData.get(index2 - 1);
+        keywordUpdated.setEventName("第二条热搜");
         String serializedNameUpdated = new ObjectMapper().writeValueAsString(nameUpdated);
 
-        mockMvc.perform(patch(ROOT_URL + "/update")
+        mockMvc.perform(patch(ROOT_URL + "/" + index2)
                 .accept(MediaType.APPLICATION_JSON)
                 .contentType(MediaType.APPLICATION_JSON)
                 .characterEncoding(StandardCharsets.UTF_8.name())
-                .param("index", Integer.toString(2))
                 .content(serializedNameUpdated))
 
                 .andExpect(status().isOk())
@@ -140,14 +143,17 @@ class RsListApplicationTests {
                 .andExpect(jsonPath("$.eventName", is(nameUpdated.getEventName())))
                 .andExpect(jsonPath("$.keyword", is(nameUpdated.getKeyword())));
 
-        RsEvent bothUpdated = new RsEvent("第一条热搜", "历史");
+        int index3 = 1;
+
+        RsEvent bothUpdated = initialData.get(index3 - 1);
+        bothUpdated.setEventName("第一条热搜");
+        bothUpdated.setKeyword("历史");
         String serializedBothUpdated = new ObjectMapper().writeValueAsString(bothUpdated);
 
-        mockMvc.perform(patch(ROOT_URL + "/update")
+        mockMvc.perform(patch(ROOT_URL + "/" + index3)
                 .accept(MediaType.APPLICATION_JSON)
                 .contentType(MediaType.APPLICATION_JSON)
                 .characterEncoding(StandardCharsets.UTF_8.name())
-                .param("index", Integer.toString(1))
                 .content(serializedBothUpdated))
 
                 .andExpect(status().isOk())
@@ -162,11 +168,10 @@ class RsListApplicationTests {
         int index = 1;
         RsEvent deleted = initialData.get(index);
 
-        mockMvc.perform(delete(ROOT_URL + "/delete")
+        mockMvc.perform(delete(ROOT_URL + "/" + index)
                 .accept(MediaType.APPLICATION_JSON)
                 .contentType(MediaType.APPLICATION_JSON)
-                .characterEncoding(StandardCharsets.UTF_8.name())
-                .param("index", Integer.toString(index)))
+                .characterEncoding(StandardCharsets.UTF_8.name()))
 
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))

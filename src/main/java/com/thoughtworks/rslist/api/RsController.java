@@ -18,12 +18,12 @@ public class RsController {
     add(new RsEvent("第三条事件", "文化"));
   }};
 
-  @GetMapping(path = "/find")
-  public RsEvent find(@RequestParam int index) {
+  @GetMapping(path = "/{index}")
+  public RsEvent find(@PathVariable int index) {
     return rsList.get(index - 1);
   }
 
-  @GetMapping(path = "/list")
+  @GetMapping
   public List<RsEvent> list(@RequestParam(required = false) Integer start,
                             @RequestParam(required = false) Integer end) {
 
@@ -34,15 +34,15 @@ public class RsController {
     }
   }
 
-  @PostMapping(path = "/add")
+  @PostMapping
   public RsEvent add(@RequestBody String request) throws JsonProcessingException {
     RsEvent event = new ObjectMapper().readValue(request, RsEvent.class);
     rsList.add(event);
     return event;
   }
 
-  @PatchMapping(path = "/update")
-  public RsEvent update(@RequestParam int index, @RequestBody String request) throws JsonProcessingException {
+  @PatchMapping(path = "/{index}")
+  public RsEvent update(@PathVariable int index, @RequestBody String request) throws JsonProcessingException {
 
     RsEvent requested = new ObjectMapper().readValue(request, RsEvent.class);
 
@@ -57,8 +57,8 @@ public class RsController {
     return updated;
   }
 
-  @DeleteMapping(path = "/delete")
-  public RsEvent delete(@RequestParam int index) {
+  @DeleteMapping(path = "/{index}")
+  public RsEvent delete(@PathVariable int index) {
     return rsList.remove(index);
   }
 
