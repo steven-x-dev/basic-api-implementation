@@ -3,6 +3,7 @@ package com.thoughtworks.rslist;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.thoughtworks.rslist.api.RsController;
 import com.thoughtworks.rslist.domain.RsEvent;
+import com.thoughtworks.rslist.domain.User;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -20,12 +21,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 
 @SpringBootTest
-class RsListApplicationTests {
+class RsControllerTest {
 
     private static final String ROOT_URL = "/rs";
 
     private MockMvc mockMvc;
 
+    private User alice;
     private List<RsEvent> initialData;
 
     @BeforeEach
@@ -35,6 +37,7 @@ class RsListApplicationTests {
             add(new RsEvent("第二条事件", "经济"));
             add(new RsEvent("第三条事件", "文化"));
         }};
+        alice = new User("Alice", 20, "female", "alice@tw.com", "13000000000");
         mockMvc = MockMvcBuilders.standaloneSetup(new RsController()).build();
     }
 
@@ -49,18 +52,20 @@ class RsListApplicationTests {
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.eventName", is(initialData.get(index - 1).getEventName())))
-                .andExpect(jsonPath("$.keyword", is(initialData.get(index - 1).getKeyword())));
+                .andExpect(jsonPath("$.keyword", is(initialData.get(index - 1).getKeyword())))
+                .andExpect(jsonPath("$", not(hasKey("user"))));
     }
 
     @Test
     void should_list_all_rs_events() throws Exception {
 
-        String serializedExpectedResult = new ObjectMapper().writeValueAsString(initialData);
+        String serializedExpectedResult =
+                new ObjectMapper().writeValueAsString(initialData);
 
-        mockMvc.perform(get(ROOT_URL))
+        mockMvc.perform(get(ROOT_URL + "/list"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$", hasSize(3)))
+                .andExpect(jsonPath("$", hasSize(initialData.size())))
                 .andExpect(result -> assertEquals(serializedExpectedResult,
                         result.getResponse().getContentAsString(StandardCharsets.UTF_8)));
     }
@@ -73,7 +78,7 @@ class RsListApplicationTests {
 
         String serializedExpectedResult = new ObjectMapper().writeValueAsString(initialData.subList(start - 1, end));
 
-        mockMvc.perform(get(ROOT_URL)
+        mockMvc.perform(get(ROOT_URL + "/list")
                 .accept(MediaType.APPLICATION_JSON)
                 .contentType(MediaType.APPLICATION_JSON)
                 .characterEncoding(StandardCharsets.UTF_8.name())
@@ -90,8 +95,13 @@ class RsListApplicationTests {
     @Test
     void should_add_rs_event_and_get_returned_added_event_given_event_data_as_string() throws Exception {
 
-        RsEvent added = new RsEvent("第四条事件", "娱乐");
-        String serialized = new ObjectMapper().writeValueAsString(added);
+        RsEvent added = new RsEvent("第四条事件", "娱乐", alice);
+
+        ObjectMapper objectMapper = new ObjectMapper();
+
+        String userString = objectMapper.writeValueAsString(alice);
+        String eventString = objectMapper.writeValueAsString(added);
+        String serialized = eventString.substring(0, eventString.length() - 1) + ",\"user\":" + userString + "}";
 
         mockMvc.perform(post(ROOT_URL)
                 .accept(MediaType.APPLICATION_JSON)
@@ -99,12 +109,9 @@ class RsListApplicationTests {
                 .characterEncoding(StandardCharsets.UTF_8.name())
                 .content(serialized))
 
-                .andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.eventName", is(added.getEventName())))
-                .andExpect(jsonPath("$.keyword", is(added.getKeyword())));
+                .andExpect(status().isCreated())
+                .andExpect(header().string("index", any(String.class)));
     }
-
 
     @Test
     void should_update_one_rs_event_when_supplying_one_or_more_field_given_id() throws Exception {

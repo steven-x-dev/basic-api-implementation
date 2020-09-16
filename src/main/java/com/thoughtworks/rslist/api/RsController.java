@@ -3,8 +3,11 @@ package com.thoughtworks.rslist.api;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.thoughtworks.rslist.domain.RsEvent;
+import com.thoughtworks.rslist.domain.User;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import javax.validation.Valid;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -12,54 +15,62 @@ import java.util.List;
 @RequestMapping(path = "/rs")
 public class RsController {
 
-  private List<RsEvent> rsList = new ArrayList<RsEvent>() {{
-    add(new RsEvent("第一条事件", "政治"));
-    add(new RsEvent("第二条事件", "经济"));
-    add(new RsEvent("第三条事件", "文化"));
-  }};
+    private User alice = new User("Alice", 20, "female", "alice@tw.com", "13000000000");
+    private User bob = new User("Bob", 22, "male", "bob@tw.com", "15111111111");
+    private User charlie = new User("Charlie", 25, "female", "charlie@tw.com", "18222222222");
 
-  @GetMapping(path = "/{index}")
-  public RsEvent find(@PathVariable int index) {
-    return rsList.get(index - 1);
-  }
+    private List<RsEvent> rsList = new ArrayList<RsEvent>() {{
+        add(new RsEvent("第一条事件", "政治", alice));
+        add(new RsEvent("第二条事件", "经济", bob));
+        add(new RsEvent("第三条事件", "文化", charlie));
+    }};
 
-  @GetMapping
-  public List<RsEvent> list(@RequestParam(required = false) Integer start,
-                            @RequestParam(required = false) Integer end) {
-
-    if (start == null || end == null) {
-      return new ArrayList<>(rsList);
-    } else {
-      return new ArrayList<>(rsList.subList(start - 1, end));
+    @GetMapping(path = "/{index}")
+    public ResponseEntity<RsEvent> find(@PathVariable int index) {
+        return ResponseEntity.ok(rsList.get(index - 1));
     }
-  }
 
-  @PostMapping
-  public RsEvent add(@RequestBody String request) throws JsonProcessingException {
-    RsEvent event = new ObjectMapper().readValue(request, RsEvent.class);
-    rsList.add(event);
-    return event;
-  }
+    @GetMapping(path = "/list")
+    public ResponseEntity<List<RsEvent>> list(@RequestParam(required = false) Integer start,
+                                              @RequestParam(required = false) Integer end) {
 
-  @PatchMapping(path = "/{index}")
-  public RsEvent update(@PathVariable int index, @RequestBody String request) throws JsonProcessingException {
+      if (start == null || end == null) {
+          return ResponseEntity.ok(rsList);
+      } else {
+          return ResponseEntity.ok(rsList.subList(start - 1, end));
+      }
+    }
 
-    RsEvent requested = new ObjectMapper().readValue(request, RsEvent.class);
+    @PostMapping
+    public ResponseEntity add(@RequestBody @Valid RsEvent event) {
 
-    RsEvent updated = rsList.get(index - 1);
+        if (event.getUser() == null)
+            return ResponseEntity.badRequest().build();
 
-    if (!updated.getEventName().equals(requested.getEventName()))
-      updated.setEventName(requested.getEventName());
+        rsList.add(event);
 
-    if (!updated.getKeyword().equals(requested.getKeyword()))
-      updated.setKeyword(requested.getKeyword());
+        return ResponseEntity.created(null)
+                .header("index", Integer.toString(rsList.indexOf(event)))
+                .build();
+    }
 
-    return updated;
-  }
+    @PatchMapping(path = "/{index}")
+    public ResponseEntity<RsEvent> update(@PathVariable int index, @RequestBody @Valid RsEvent requested) {
 
-  @DeleteMapping(path = "/{index}")
-  public RsEvent delete(@PathVariable int index) {
-    return rsList.remove(index);
-  }
+        RsEvent updated = rsList.get(index - 1);
+
+        if (!updated.getEventName().equals(requested.getEventName()))
+            updated.setEventName(requested.getEventName());
+
+        if (!updated.getKeyword().equals(requested.getKeyword()))
+            updated.setKeyword(requested.getKeyword());
+
+        return ResponseEntity.ok(updated);
+    }
+
+    @DeleteMapping(path = "/{index}")
+    public ResponseEntity<RsEvent> delete(@PathVariable int index) {
+        return ResponseEntity.ok(rsList.remove(index));
+    }
 
 }
