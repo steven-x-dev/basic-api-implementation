@@ -6,11 +6,11 @@ import com.thoughtworks.rslist.domain.RsEvent;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.context.support.WebApplicationContextUtils;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -22,12 +22,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 
 @SpringBootTest
-@AutoConfigureMockMvc
 class RsListApplicationTests {
 
     private static final String ROOT_URL = "/rs";
 
-    @Autowired
     private MockMvc mockMvc;
 
     private List<RsEvent> initialData;
@@ -39,6 +37,7 @@ class RsListApplicationTests {
             add(new RsEvent("第二条事件", "经济"));
             add(new RsEvent("第三条事件", "文化"));
         }};
+        mockMvc = MockMvcBuilders.standaloneSetup(new RsController()).build();
     }
 
     @AfterEach
