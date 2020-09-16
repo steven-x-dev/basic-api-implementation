@@ -57,6 +57,14 @@ class RsControllerTest {
     }
 
     @Test
+    void should_get_invalid_index_error_when_find_one_rs_event_given_wrong_index() throws Exception {
+        mockMvc.perform(get(ROOT_URL + "/" + initialData.size() + 1))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.error", is("invalid index")));
+    }
+
+    @Test
     void should_list_all_rs_events() throws Exception {
 
         String serializedExpectedResult =
@@ -93,6 +101,21 @@ class RsControllerTest {
     }
 
     @Test
+    void should_get_invalid_index_error_when_list_several_rs_events_given_wrong_index() throws Exception {
+
+        mockMvc.perform(get(ROOT_URL + "/list")
+                .accept(MediaType.APPLICATION_JSON)
+                .contentType(MediaType.APPLICATION_JSON)
+                .characterEncoding(StandardCharsets.UTF_8.name())
+                .param("start", Integer.toString(2))
+                .param("end", Integer.toString(1)))
+
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.error", is("invalid index")));
+    }
+
+    @Test
     void should_add_rs_event_and_get_returned_added_event_given_event_data_as_string() throws Exception {
 
         RsEvent added = new RsEvent("第四条事件", "娱乐", alice);
@@ -114,7 +137,7 @@ class RsControllerTest {
     }
 
     @Test
-    void should_update_one_rs_event_when_supplying_one_or_more_field_given_id() throws Exception {
+    void should_update_one_rs_event_when_supplying_one_or_more_field_given_index() throws Exception {
 
         int index1 = 3;
 
@@ -170,6 +193,26 @@ class RsControllerTest {
     }
 
     @Test
+    void should_get_invalid_index_error_when_update_given_wrong_index() throws Exception {
+
+        int index = initialData.size();
+
+        RsEvent keywordUpdated = initialData.get(index - 1);
+        keywordUpdated.setKeyword("时事");
+        String serializedKeywordUpdated = new ObjectMapper().writeValueAsString(keywordUpdated);
+
+        mockMvc.perform(patch(ROOT_URL + "/" + index + 1)
+                .accept(MediaType.APPLICATION_JSON)
+                .contentType(MediaType.APPLICATION_JSON)
+                .characterEncoding(StandardCharsets.UTF_8.name())
+                .content(serializedKeywordUpdated))
+
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.error", is("invalid index")));
+    }
+
+    @Test
     void should_delete_given_index() throws Exception {
 
         int index = 1;
@@ -184,6 +227,19 @@ class RsControllerTest {
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.eventName", is(deleted.getEventName())))
                 .andExpect(jsonPath("$.keyword", is(deleted.getKeyword())));
+    }
+
+    @Test
+    void should_get_invalid_index_error_when_delete_given_wrong_index() throws Exception {
+
+        mockMvc.perform(delete(ROOT_URL + "/" + initialData.size() + 1)
+                .accept(MediaType.APPLICATION_JSON)
+                .contentType(MediaType.APPLICATION_JSON)
+                .characterEncoding(StandardCharsets.UTF_8.name()))
+
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.error", is("invalid index")));
     }
 
 }

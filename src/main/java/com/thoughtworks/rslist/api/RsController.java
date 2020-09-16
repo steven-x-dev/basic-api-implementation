@@ -1,10 +1,11 @@
 package com.thoughtworks.rslist.api;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.thoughtworks.rslist.domain.RsEvent;
 import com.thoughtworks.rslist.domain.User;
+import com.thoughtworks.rslist.exception.Err;
+import com.thoughtworks.rslist.exception.RsEventNotValidException;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
@@ -27,6 +28,9 @@ public class RsController {
 
     @GetMapping(path = "/{index}")
     public ResponseEntity<RsEvent> find(@PathVariable int index) {
+        if (index < 1 || index > rsList.size()) {
+            throw new RsEventNotValidException("invalid index");
+        }
         return ResponseEntity.ok(rsList.get(index - 1));
     }
 
@@ -34,18 +38,22 @@ public class RsController {
     public ResponseEntity<List<RsEvent>> list(@RequestParam(required = false) Integer start,
                                               @RequestParam(required = false) Integer end) {
 
-      if (start == null || end == null) {
-          return ResponseEntity.ok(rsList);
-      } else {
-          return ResponseEntity.ok(rsList.subList(start - 1, end));
-      }
+        if (start == null || end == null) {
+            return ResponseEntity.ok(rsList);
+        } else {
+            if (start < 1 || end > rsList.size() || end < start) {
+                throw new RsEventNotValidException("invalid index");
+            }
+            return ResponseEntity.ok(rsList.subList(start - 1, end));
+        }
     }
 
     @PostMapping
     public ResponseEntity add(@RequestBody @Valid RsEvent event) {
 
-        if (event.getUser() == null)
-            return ResponseEntity.badRequest().build();
+        if (event.getUser() == null) {
+            throw new RsEventNotValidException("invalid param");
+        }
 
         rsList.add(event);
 
@@ -56,6 +64,10 @@ public class RsController {
 
     @PatchMapping(path = "/{index}")
     public ResponseEntity<RsEvent> update(@PathVariable int index, @RequestBody @Valid RsEvent requested) {
+
+        if (index < 1 || index > rsList.size()) {
+            throw new RsEventNotValidException("invalid index");
+        }
 
         RsEvent updated = rsList.get(index - 1);
 
@@ -70,7 +82,28 @@ public class RsController {
 
     @DeleteMapping(path = "/{index}")
     public ResponseEntity<RsEvent> delete(@PathVariable int index) {
+
+        if (index < 1 || index > rsList.size()) {
+            throw new RsEventNotValidException("invalid index");
+        }
+
         return ResponseEntity.ok(rsList.remove(index));
+    }
+
+    @ExceptionHandler({ RsEventNotValidException.class, MethodArgumentNotValidException.class })
+    private ResponseEntity<Err> handleRsEventException(Exception e) {
+
+        String message;
+
+        if (e instanceof RsEventNotValidException) {
+            message = e.getMessage();
+        } else if (e instanceof MethodArgumentNotValidException) {
+            message = "invalid param";
+        } else {
+            message = "unknown error";
+        }
+
+        return ResponseEntity.badRequest().body(new Err(message));
     }
 
 }
