@@ -13,54 +13,54 @@ import java.util.List;
 @RequestMapping(path = "/rs")
 public class RsController {
 
-  private List<RsEvent> rsList = new ArrayList<RsEvent>() {{
-    add(new RsEvent("第一条事件", "政治"));
-    add(new RsEvent("第二条事件", "经济"));
-    add(new RsEvent("第三条事件", "文化"));
-  }};
+    private List<RsEvent> rsList = new ArrayList<RsEvent>() {{
+        add(new RsEvent("第一条事件", "政治"));
+        add(new RsEvent("第二条事件", "经济"));
+        add(new RsEvent("第三条事件", "文化"));
+    }};
 
-  @GetMapping(path = "/{index}")
-  public ResponseEntity<RsEvent> find(@PathVariable int index) {
-    return ResponseEntity.ok(rsList.get(index - 1));
-  }
-
-  @GetMapping(path = "/list")
-  public ResponseEntity<List<RsEvent>> list(@RequestParam(required = false) Integer start,
-                                            @RequestParam(required = false) Integer end) {
-
-    if (start == null || end == null) {
-      return ResponseEntity.ok(rsList);
-    } else {
-      return ResponseEntity.ok(rsList.subList(start - 1, end));
+    @GetMapping(path = "/{index}")
+    public ResponseEntity<RsEvent> find(@PathVariable int index) {
+        return ResponseEntity.ok(rsList.get(index - 1));
     }
-  }
 
-  @PostMapping
-  public ResponseEntity add(@RequestBody String request) throws JsonProcessingException {
-    RsEvent event = new ObjectMapper().readValue(request, RsEvent.class);
-    rsList.add(event);
-    return ResponseEntity.created(null).header("index", Integer.toString(rsList.indexOf(event))).build();
-  }
+    @GetMapping(path = "/list")
+    public ResponseEntity<List<RsEvent>> list(@RequestParam(required = false) Integer start,
+                                              @RequestParam(required = false) Integer end) {
 
-  @PatchMapping(path = "/{index}")
-  public ResponseEntity<RsEvent> update(@PathVariable int index, @RequestBody String request) throws JsonProcessingException {
+      if (start == null || end == null) {
+          return ResponseEntity.ok(rsList);
+      } else {
+          return ResponseEntity.ok(rsList.subList(start - 1, end));
+      }
+    }
 
-    RsEvent requested = new ObjectMapper().readValue(request, RsEvent.class);
+    @PostMapping
+    public ResponseEntity add(@RequestBody String request) throws JsonProcessingException {
+        RsEvent event = new ObjectMapper().readValue(request, RsEvent.class);
+        rsList.add(event);
+        return ResponseEntity.created(null).header("index", Integer.toString(rsList.indexOf(event))).build();
+    }
 
-    RsEvent updated = rsList.get(index - 1);
+    @PatchMapping(path = "/{index}")
+    public ResponseEntity<RsEvent> update(@PathVariable int index, @RequestBody String request) throws JsonProcessingException {
 
-    if (!updated.getEventName().equals(requested.getEventName()))
-      updated.setEventName(requested.getEventName());
+        RsEvent requested = new ObjectMapper().readValue(request, RsEvent.class);
 
-    if (!updated.getKeyword().equals(requested.getKeyword()))
-      updated.setKeyword(requested.getKeyword());
+        RsEvent updated = rsList.get(index - 1);
 
-    return ResponseEntity.ok(updated);
-  }
+        if (!updated.getEventName().equals(requested.getEventName()))
+            updated.setEventName(requested.getEventName());
 
-  @DeleteMapping(path = "/{index}")
-  public ResponseEntity<RsEvent> delete(@PathVariable int index) {
-    return ResponseEntity.ok(rsList.remove(index));
-  }
+        if (!updated.getKeyword().equals(requested.getKeyword()))
+            updated.setKeyword(requested.getKeyword());
+
+        return ResponseEntity.ok(updated);
+    }
+
+    @DeleteMapping(path = "/{index}")
+    public ResponseEntity<RsEvent> delete(@PathVariable int index) {
+        return ResponseEntity.ok(rsList.remove(index));
+    }
 
 }
