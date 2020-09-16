@@ -1,9 +1,8 @@
 package com.thoughtworks.rslist.api;
 
-import com.thoughtworks.rslist.domain.RsEvent;
 import com.thoughtworks.rslist.domain.User;
 import com.thoughtworks.rslist.exception.Err;
-import com.thoughtworks.rslist.exception.RsEventNotValidException;
+import com.thoughtworks.rslist.exception.UserNameOccupiedException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
@@ -30,6 +29,10 @@ public class UserController {
     @PostMapping
     public ResponseEntity add(@RequestBody @Valid User user) {
 
+        if (userList.stream().anyMatch(u -> u.getName().equalsIgnoreCase(user.getName()))) {
+            throw new UserNameOccupiedException(user.getName() + " is used");
+        }
+
         userList.add(user);
 
         return ResponseEntity.created(null)
@@ -37,9 +40,20 @@ public class UserController {
                 .build();
     }
 
-    @ExceptionHandler({ MethodArgumentNotValidException.class })
-    private ResponseEntity<Err> handleUserException(MethodArgumentNotValidException e) {
-        return ResponseEntity.badRequest().body(new Err("invalid user"));
+    @ExceptionHandler({ UserNameOccupiedException.class, MethodArgumentNotValidException.class })
+    private ResponseEntity<Err> handleUserException(Exception e) {
+
+        String message;
+
+        if (e instanceof UserNameOccupiedException) {
+            message = e.getMessage();
+        } else if (e instanceof MethodArgumentNotValidException) {
+            message = "invalid user";
+        } else {
+            message = "unknown error";
+        }
+
+        return ResponseEntity.badRequest().body(new Err(message));
     }
 
 }

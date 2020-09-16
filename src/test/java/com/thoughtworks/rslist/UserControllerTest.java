@@ -69,7 +69,7 @@ public class UserControllerTest {
     }
 
     @Test
-    void should_get_invalid_user_error() throws Exception {
+    void should_get_invalid_user_error_when_add_user_given_wrong_user_param() throws Exception {
 
         User dave = new User("Dave", 28, "male", "dave@tw.com", null);
         String serialized = new ObjectMapper().writeValueAsString(dave);
@@ -83,6 +83,23 @@ public class UserControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.error", is("invalid user")));
+    }
+
+    @Test
+    void should_get_user_exists_error_when_add_user_given_existing_name() throws Exception {
+
+        User bob = new User("bob", 28, "male", "dave@tw.com", "19333333333");
+        String serialized = new ObjectMapper().writeValueAsString(bob);
+
+        mockMvc.perform(post(ROOT_URL)
+                .accept(MediaType.APPLICATION_JSON)
+                .contentType(MediaType.APPLICATION_JSON)
+                .characterEncoding(StandardCharsets.UTF_8.name())
+                .content(serialized))
+
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.error", is(bob.getName() + " is used")));
     }
 
 }
