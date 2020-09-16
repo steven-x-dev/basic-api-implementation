@@ -137,6 +137,52 @@ class RsControllerTest {
     }
 
     @Test
+    void should_get_invalid_param_error_when_add_event_given_wrong_param() throws Exception {
+
+        RsEvent added = new RsEvent("第四条事件", null, alice);
+
+        ObjectMapper objectMapper = new ObjectMapper();
+
+        String userString = objectMapper.writeValueAsString(alice);
+        String eventString = objectMapper.writeValueAsString(added);
+        String serialized = eventString.substring(0, eventString.length() - 1) + ",\"user\":" + userString + "}";
+
+        mockMvc.perform(post(ROOT_URL)
+                .accept(MediaType.APPLICATION_JSON)
+                .contentType(MediaType.APPLICATION_JSON)
+                .characterEncoding(StandardCharsets.UTF_8.name())
+                .content(serialized))
+
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.error", is("invalid param")));
+    }
+
+
+    @Test
+    void should_get_invalid_param_error_when_add_event_given_wrong_user() throws Exception {
+
+        alice.setAge(17);
+        RsEvent added = new RsEvent("第四条事件", null, alice);
+
+        ObjectMapper objectMapper = new ObjectMapper();
+
+        String userString = objectMapper.writeValueAsString(alice);
+        String eventString = objectMapper.writeValueAsString(added);
+        String serialized = eventString.substring(0, eventString.length() - 1) + ",\"user\":" + userString + "}";
+
+        mockMvc.perform(post(ROOT_URL)
+                .accept(MediaType.APPLICATION_JSON)
+                .contentType(MediaType.APPLICATION_JSON)
+                .characterEncoding(StandardCharsets.UTF_8.name())
+                .content(serialized))
+
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.error", is("invalid param")));
+    }
+
+    @Test
     void should_update_one_rs_event_when_supplying_one_or_more_field_given_index() throws Exception {
 
         int index1 = 3;
@@ -210,6 +256,26 @@ class RsControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.error", is("invalid index")));
+    }
+
+    @Test
+    void should_get_invalid_param_error_when_update_event_given_wrong_param() throws Exception {
+
+        int index = 3;
+
+        RsEvent keywordUpdated = initialData.get(index - 1);
+        keywordUpdated.setKeyword(null);
+        String serializedKeywordUpdated = new ObjectMapper().writeValueAsString(keywordUpdated);
+
+        mockMvc.perform(patch(ROOT_URL + "/" + index)
+                .accept(MediaType.APPLICATION_JSON)
+                .contentType(MediaType.APPLICATION_JSON)
+                .characterEncoding(StandardCharsets.UTF_8.name())
+                .content(serializedKeywordUpdated))
+
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.error", is("invalid param")));
     }
 
     @Test
