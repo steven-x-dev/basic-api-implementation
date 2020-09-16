@@ -14,8 +14,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.hamcrest.Matchers.any;
-import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -67,6 +66,23 @@ public class UserControllerTest {
 
                 .andExpect(status().isCreated())
                 .andExpect(header().string("index", any(String.class)));
+    }
+
+    @Test
+    void should_get_invalid_user_error() throws Exception {
+
+        User dave = new User("Dave", 28, "male", "dave@tw.com", null);
+        String serialized = new ObjectMapper().writeValueAsString(dave);
+
+        mockMvc.perform(post(ROOT_URL)
+                .accept(MediaType.APPLICATION_JSON)
+                .contentType(MediaType.APPLICATION_JSON)
+                .characterEncoding(StandardCharsets.UTF_8.name())
+                .content(serialized))
+
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.error", is("invalid user")));
     }
 
 }
