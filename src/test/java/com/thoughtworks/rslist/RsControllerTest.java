@@ -183,6 +183,23 @@ class RsControllerTest {
     }
 
     @Test
+    void should_get_invalid_param_error_when_add_event_given_null_user() throws Exception {
+
+        RsEvent added = new RsEvent("第四条事件", "娱乐", null);
+        String serialized = new ObjectMapper().writeValueAsString(added);
+
+        mockMvc.perform(post(ROOT_URL)
+                .accept(MediaType.APPLICATION_JSON)
+                .contentType(MediaType.APPLICATION_JSON)
+                .characterEncoding(StandardCharsets.UTF_8.name())
+                .content(serialized))
+
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.error", is("invalid param")));
+    }
+
+    @Test
     void should_update_one_rs_event_when_supplying_one_or_more_field_given_index() throws Exception {
 
         int index1 = 3;
