@@ -20,7 +20,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 
 @SpringBootTest
-class RsListApplicationTests {
+class RsControllerTest {
 
     private static final String ROOT_URL = "/rs";
 
