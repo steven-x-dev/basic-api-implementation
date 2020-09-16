@@ -35,7 +35,7 @@ public class User {
                 @NotNull String gender,
                 @NotNull @Email String email,
                 @NotNull @Pattern(regexp = "1\\d{10}") String phone) {
-        
+
         this.name = name;
         this.age = age;
         this.gender = gender;
