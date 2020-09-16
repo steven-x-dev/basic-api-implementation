@@ -5,29 +5,37 @@ import javax.validation.constraints.*;
 public class User {
 
     @NotNull
-    @Size(min = 4, max = 100)
+    @Size(min = 3, max = 8)
     private String name;
 
     @NotNull
     @Min(18)
-    @Min(100)
+    @Max(100)
     private Integer age;
 
     @NotNull
     private String gender;
 
+    @NotNull
     @Email
     private String email;
 
+    @NotNull
     @Pattern(regexp = "1\\d{10}")
     private String phone;
 
+    @NotNull
     @Min(0)
-    private int votes = 10;
+    private Integer votes = 10;
 
     public User() {}
 
-    public User(@NotNull @Size(min = 4, max = 100) String name, @NotNull @Min(18) @Min(100) Integer age, @NotNull String gender, @Email String email, @Pattern(regexp = "1\\d{10}") String phone) {
+    public User(@NotNull @Size(min = 3, max = 8) String name,
+                @NotNull @Min(18) @Max(100) Integer age,
+                @NotNull String gender,
+                @NotNull @Email String email,
+                @NotNull @Pattern(regexp = "1\\d{10}") String phone) {
+        
         this.name = name;
         this.age = age;
         this.gender = gender;
@@ -82,4 +90,5 @@ public class User {
     public void setVotes(int votes) {
         this.votes = votes;
     }
+
 }

@@ -3,6 +3,7 @@ package com.thoughtworks.rslist;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.thoughtworks.rslist.api.RsController;
 import com.thoughtworks.rslist.domain.RsEvent;
+import com.thoughtworks.rslist.domain.User;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -26,21 +27,23 @@ class RsControllerTest {
 
     private MockMvc mockMvc;
 
-    private List<RsEvent> initialData;
+    private User alice;
+    private List<RsEvent> clientData;
 
     @BeforeEach
     void init() {
-        initialData = new ArrayList<RsEvent>() {{
+        clientData = new ArrayList<RsEvent>() {{
             add(new RsEvent("第一条事件", "政治"));
             add(new RsEvent("第二条事件", "经济"));
             add(new RsEvent("第三条事件", "文化"));
         }};
+        alice = new User("Alice", 20, "female", "alice@tw.com", "13000000000");
         mockMvc = MockMvcBuilders.standaloneSetup(new RsController()).build();
     }
 
     @Test
     void should_find_one_rs_event_by_index() throws Exception {
-        for (int i = 1; i <= initialData.size(); i++)
+        for (int i = 1; i <= clientData.size(); i++)
             should_find_one_rs_event_by_index(i);
     }
 
@@ -48,14 +51,16 @@ class RsControllerTest {
         mockMvc.perform(get(ROOT_URL + "/" + index))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.eventName", is(initialData.get(index - 1).getEventName())))
-                .andExpect(jsonPath("$.keyword", is(initialData.get(index - 1).getKeyword())));
+                .andExpect(jsonPath("$.eventName", is(clientData.get(index - 1).getEventName())))
+                .andExpect(jsonPath("$.keyword", is(clientData.get(index - 1).getKeyword())))
+                .andExpect(jsonPath("$", not(hasKey("user"))));
     }
 
     @Test
     void should_list_all_rs_events() throws Exception {
 
-        String serializedExpectedResult = new ObjectMapper().writeValueAsString(initialData);
+        String serializedExpectedResult =
+                new ObjectMapper().writeValueAsString(clientData);
 
         mockMvc.perform(get(ROOT_URL + "/list"))
                 .andExpect(status().isOk())
@@ -71,7 +76,7 @@ class RsControllerTest {
         int start = 2;
         int end = 3;
 
-        String serializedExpectedResult = new ObjectMapper().writeValueAsString(initialData.subList(start - 1, end));
+        String serializedExpectedResult = new ObjectMapper().writeValueAsString(clientData.subList(start - 1, end));
 
         mockMvc.perform(get(ROOT_URL + "/list")
                 .accept(MediaType.APPLICATION_JSON)
@@ -90,8 +95,13 @@ class RsControllerTest {
     @Test
     void should_add_rs_event_and_get_returned_added_event_given_event_data_as_string() throws Exception {
 
-        RsEvent added = new RsEvent("第四条事件", "娱乐");
-        String serialized = new ObjectMapper().writeValueAsString(added);
+        RsEvent added = new RsEvent("第四条事件", "娱乐", alice);
+
+        ObjectMapper objectMapper = new ObjectMapper();
+
+        String userString = objectMapper.writeValueAsString(alice);
+        String eventString = objectMapper.writeValueAsString(added);
+        String serialized = eventString.substring(0, eventString.length() - 1) + ",\"user\":" + userString + "}";
 
         mockMvc.perform(post(ROOT_URL)
                 .accept(MediaType.APPLICATION_JSON)
@@ -103,13 +113,12 @@ class RsControllerTest {
                 .andExpect(header().string("index", any(String.class)));
     }
 
-
     @Test
     void should_update_one_rs_event_when_supplying_one_or_more_field_given_id() throws Exception {
 
         int index1 = 3;
 
-        RsEvent keywordUpdated = initialData.get(index1 - 1);
+        RsEvent keywordUpdated = clientData.get(index1 - 1);
         keywordUpdated.setKeyword("时事");
         String serializedKeywordUpdated = new ObjectMapper().writeValueAsString(keywordUpdated);
 
@@ -126,7 +135,7 @@ class RsControllerTest {
 
         int index2 = 2;
 
-        RsEvent nameUpdated = initialData.get(index2 - 1);
+        RsEvent nameUpdated = clientData.get(index2 - 1);
         keywordUpdated.setEventName("第二条热搜");
         String serializedNameUpdated = new ObjectMapper().writeValueAsString(nameUpdated);
 
@@ -143,7 +152,7 @@ class RsControllerTest {
 
         int index3 = 1;
 
-        RsEvent bothUpdated = initialData.get(index3 - 1);
+        RsEvent bothUpdated = clientData.get(index3 - 1);
         bothUpdated.setEventName("第一条热搜");
         bothUpdated.setKeyword("历史");
         String serializedBothUpdated = new ObjectMapper().writeValueAsString(bothUpdated);
@@ -164,7 +173,7 @@ class RsControllerTest {
     void should_delete_given_index() throws Exception {
 
         int index = 1;
-        RsEvent deleted = initialData.get(index);
+        RsEvent deleted = clientData.get(index);
 
         mockMvc.perform(delete(ROOT_URL + "/" + index)
                 .accept(MediaType.APPLICATION_JSON)
