@@ -57,7 +57,7 @@ class RsListApplicationTests {
 
         String serializedExpectedResult = new ObjectMapper().writeValueAsString(initialData);
 
-        mockMvc.perform(get(ROOT_URL))
+        mockMvc.perform(get(ROOT_URL + "/list"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$", hasSize(3)))
@@ -73,7 +73,7 @@ class RsListApplicationTests {
 
         String serializedExpectedResult = new ObjectMapper().writeValueAsString(initialData.subList(start - 1, end));
 
-        mockMvc.perform(get(ROOT_URL)
+        mockMvc.perform(get(ROOT_URL + "/list")
                 .accept(MediaType.APPLICATION_JSON)
                 .contentType(MediaType.APPLICATION_JSON)
                 .characterEncoding(StandardCharsets.UTF_8.name())

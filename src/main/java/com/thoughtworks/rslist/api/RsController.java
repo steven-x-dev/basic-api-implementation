@@ -24,7 +24,7 @@ public class RsController {
     return ResponseEntity.ok(rsList.get(index - 1));
   }
 
-  @GetMapping
+  @GetMapping(path = "/list")
   public ResponseEntity<List<RsEvent>> list(@RequestParam(required = false) Integer start,
                                             @RequestParam(required = false) Integer end) {
 
