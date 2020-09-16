@@ -3,10 +3,9 @@ package com.thoughtworks.rslist.api;
 import com.thoughtworks.rslist.domain.RsEvent;
 import com.thoughtworks.rslist.domain.User;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
+import javax.validation.Valid;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -23,6 +22,16 @@ public class UserController {
     @GetMapping(path = "/list")
     public ResponseEntity<List<User>> list() {
         return ResponseEntity.ok(userList);
+    }
+
+    @PostMapping
+    public ResponseEntity add(@RequestBody @Valid User user) {
+
+        userList.add(user);
+
+        return ResponseEntity.created(null)
+                .header("index", Integer.toString(userList.indexOf(user)))
+                .build();
     }
 
 }
