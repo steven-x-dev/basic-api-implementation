@@ -46,7 +46,7 @@ public class UserControllerTest {
         mockMvc.perform(get(ROOT_URL + "/list"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$", hasSize(3)))
+                .andExpect(jsonPath("$", hasSize(initialData.size())))
                 .andExpect(result -> assertEquals(serializedExpectedResult,
                         result.getResponse().getContentAsString(StandardCharsets.UTF_8)));
     }
