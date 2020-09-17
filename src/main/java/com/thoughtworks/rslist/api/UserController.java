@@ -1,0 +1,47 @@
+package com.thoughtworks.rslist.api;
+
+import com.thoughtworks.rslist.domain.User;
+import com.thoughtworks.rslist.exception.UserNameOccupiedException;
+import com.thoughtworks.rslist.po.UserPO;
+import com.thoughtworks.rslist.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import javax.validation.Valid;
+import java.util.ArrayList;
+import java.util.List;
+
+@RestController
+@RequestMapping(path = "/user")
+public class UserController {
+
+    @Autowired
+    UserRepository userRepository;
+
+    @GetMapping(path = "/list")
+    public ResponseEntity<List<User>> list() {
+
+        Iterable<UserPO> userPOs = userRepository.findAll();
+
+        List<User> users = new ArrayList<>();
+        userPOs.forEach(userPO -> users.add(new User(userPO)));
+
+        return ResponseEntity.ok(users);
+    }
+
+    @PostMapping
+    public ResponseEntity add(@RequestBody @Valid User newUser) {
+
+        if (userRepository.existsByUsername(newUser.getUsername()))
+            throw new UserNameOccupiedException(String.format("username %s is used", newUser.getUsername()));
+
+        UserPO newUserPO = new UserPO(newUser);
+        userRepository.save(newUserPO);
+
+        return ResponseEntity.created(null)
+                .header("id", Integer.toString(newUserPO.getId()))
+                .build();
+    }
+
+}
