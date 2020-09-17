@@ -1,15 +1,14 @@
 package com.thoughtworks.rslist;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.thoughtworks.rslist.api.RsController;
 import com.thoughtworks.rslist.domain.RsEvent;
 import com.thoughtworks.rslist.domain.User;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -21,10 +20,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 
 @SpringBootTest
+@AutoConfigureMockMvc
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class RsControllerTest {
 
     private static final String ROOT_URL = "/rs";
 
+    @Autowired
     private MockMvc mockMvc;
 
     private User alice;
@@ -38,10 +40,10 @@ class RsControllerTest {
             add(new RsEvent("第三条事件", "文化"));
         }};
         alice = new User("Alice", 20, "female", "alice@tw.com", "13000000000");
-        mockMvc = MockMvcBuilders.standaloneSetup(new RsController()).build();
     }
 
     @Test
+    @Order(1)
     void should_find_one_rs_event_by_index() throws Exception {
         for (int i = 1; i <= initialData.size(); i++)
             should_find_one_rs_event_by_index(i);
@@ -57,6 +59,7 @@ class RsControllerTest {
     }
 
     @Test
+    @Order(2)
     void should_get_invalid_index_error_when_find_one_rs_event_given_wrong_index() throws Exception {
         mockMvc.perform(get(ROOT_URL + "/" + initialData.size() + 1))
                 .andExpect(status().isBadRequest())
@@ -65,6 +68,7 @@ class RsControllerTest {
     }
 
     @Test
+    @Order(3)
     void should_list_all_rs_events() throws Exception {
 
         String serializedExpectedResult =
@@ -79,6 +83,7 @@ class RsControllerTest {
     }
 
     @Test
+    @Order(4)
     void should_list_several_rs_events_given_start_and_end() throws Exception {
 
         int start = 2;
@@ -101,6 +106,7 @@ class RsControllerTest {
     }
 
     @Test
+    @Order(5)
     void should_get_invalid_index_error_when_list_several_rs_events_given_wrong_index() throws Exception {
 
         mockMvc.perform(get(ROOT_URL + "/list")
@@ -116,6 +122,7 @@ class RsControllerTest {
     }
 
     @Test
+    @Order(6)
     void should_add_rs_event_and_get_returned_added_event_given_event_data_as_string() throws Exception {
 
         RsEvent added = new RsEvent("第四条事件", "娱乐", alice);
@@ -137,6 +144,7 @@ class RsControllerTest {
     }
 
     @Test
+    @Order(7)
     void should_get_invalid_param_error_when_add_event_given_wrong_param() throws Exception {
 
         RsEvent added = new RsEvent("第四条事件", null, alice);
@@ -160,6 +168,7 @@ class RsControllerTest {
 
 
     @Test
+    @Order(8)
     void should_get_invalid_param_error_when_add_event_given_wrong_user() throws Exception {
 
         alice.setAge(17);
@@ -183,6 +192,7 @@ class RsControllerTest {
     }
 
     @Test
+    @Order(9)
     void should_get_invalid_param_error_when_add_event_given_null_user() throws Exception {
 
         RsEvent added = new RsEvent("第四条事件", "娱乐", null);
@@ -200,6 +210,7 @@ class RsControllerTest {
     }
 
     @Test
+    @Order(10)
     void should_update_one_rs_event_when_supplying_one_or_more_field_given_index() throws Exception {
 
         int index1 = 3;
@@ -256,6 +267,7 @@ class RsControllerTest {
     }
 
     @Test
+    @Order(11)
     void should_get_invalid_index_error_when_update_given_wrong_index() throws Exception {
 
         int index = initialData.size();
@@ -276,6 +288,7 @@ class RsControllerTest {
     }
 
     @Test
+    @Order(12)
     void should_get_invalid_param_error_when_update_event_given_wrong_param() throws Exception {
 
         int index = 3;
@@ -296,6 +309,7 @@ class RsControllerTest {
     }
 
     @Test
+    @Order(13)
     void should_delete_given_index() throws Exception {
 
         int index = 1;
@@ -313,6 +327,7 @@ class RsControllerTest {
     }
 
     @Test
+    @Order(14)
     void should_get_invalid_index_error_when_delete_given_wrong_index() throws Exception {
 
         mockMvc.perform(delete(ROOT_URL + "/" + initialData.size() + 1)

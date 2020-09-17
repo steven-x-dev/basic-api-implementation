@@ -2,10 +2,8 @@ package com.thoughtworks.rslist.api;
 
 import com.thoughtworks.rslist.domain.RsEvent;
 import com.thoughtworks.rslist.domain.User;
-import com.thoughtworks.rslist.exception.Err;
 import com.thoughtworks.rslist.exception.RsEventNotValidException;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
@@ -88,22 +86,6 @@ public class RsController {
         }
 
         return ResponseEntity.ok(rsList.remove(index));
-    }
-
-    @ExceptionHandler({ RsEventNotValidException.class, MethodArgumentNotValidException.class })
-    private ResponseEntity<Err> handleRsEventException(Exception e) {
-
-        String message;
-
-        if (e instanceof RsEventNotValidException) {
-            message = e.getMessage();
-        } else if (e instanceof MethodArgumentNotValidException) {
-            message = "invalid param";
-        } else {
-            message = "unknown error";
-        }
-
-        return ResponseEntity.badRequest().body(new Err(message));
     }
 
 }

@@ -1,10 +1,11 @@
 package com.thoughtworks.rslist.api;
 
 import com.thoughtworks.rslist.domain.User;
-import com.thoughtworks.rslist.exception.Err;
 import com.thoughtworks.rslist.exception.UserNameOccupiedException;
+import com.thoughtworks.rslist.po.UserPO;
+import com.thoughtworks.rslist.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
@@ -15,45 +16,32 @@ import java.util.List;
 @RequestMapping(path = "/user")
 public class UserController {
 
-    private List<User> userList = new ArrayList<User>() {{
-        add(new User("Alice", 20, "female", "alice@tw.com", "13000000000"));
-        add(new User("Bob", 22, "male", "bob@tw.com", "15111111111"));
-        add(new User("Charlie", 25, "female", "charlie@tw.com", "18222222222"));
-    }};
+    @Autowired
+    UserRepository userRepository;
 
     @GetMapping(path = "/list")
     public ResponseEntity<List<User>> list() {
-        return ResponseEntity.ok(userList);
+
+        Iterable<UserPO> userPOs = userRepository.findAll();
+
+        List<User> users = new ArrayList<>();
+        userPOs.forEach(userPO -> users.add(new User(userPO)));
+
+        return ResponseEntity.ok(users);
     }
 
     @PostMapping
-    public ResponseEntity add(@RequestBody @Valid User user) {
+    public ResponseEntity add(@RequestBody @Valid User newUser) {
 
-        if (userList.stream().anyMatch(u -> u.getName().equalsIgnoreCase(user.getName()))) {
-            throw new UserNameOccupiedException(user.getName() + " is used");
-        }
+        if (userRepository.existsByUsername(newUser.getUsername()))
+            throw new UserNameOccupiedException(String.format("username %s is used", newUser.getUsername()));
 
-        userList.add(user);
+        UserPO newUserPO = new UserPO(newUser);
+        userRepository.save(newUserPO);
 
         return ResponseEntity.created(null)
-                .header("index", Integer.toString(userList.indexOf(user)))
+                .header("id", Integer.toString(newUserPO.getId()))
                 .build();
-    }
-
-    @ExceptionHandler({ UserNameOccupiedException.class, MethodArgumentNotValidException.class })
-    private ResponseEntity<Err> handleUserException(Exception e) {
-
-        String message;
-
-        if (e instanceof UserNameOccupiedException) {
-            message = e.getMessage();
-        } else if (e instanceof MethodArgumentNotValidException) {
-            message = "invalid user";
-        } else {
-            message = "unknown error";
-        }
-
-        return ResponseEntity.badRequest().body(new Err(message));
     }
 
 }
