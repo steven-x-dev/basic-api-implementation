@@ -1,1 +1,8 @@
-
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/rs_system
+    username: root
+    password: elec5619petopia
+  jpa:
+    hibernate:
+      ddl-auto: update
