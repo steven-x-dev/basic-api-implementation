@@ -11,6 +11,8 @@ import javax.validation.constraints.*;
 @NoArgsConstructor
 public class User {
 
+    private Integer id;
+
     @NotNull
     @Size(min = 3, max = 8)
     private String username;
@@ -48,11 +50,13 @@ public class User {
     }
 
     public User(UserPO userPO) {
+        id = userPO.getId();
         username = userPO.getUsername();
         age = userPO.getAge();
         gender = userPO.getGender();
         email = userPO.getEmail();
         phone = userPO.getPhone();
+        votes = userPO.getVotes();
     }
 
 }

@@ -10,6 +10,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -18,8 +19,7 @@ import java.util.List;
 import static org.hamcrest.Matchers.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest
@@ -102,14 +102,33 @@ public class UserControllerTest {
     @Test
     void should_get_all_users() throws Exception {
 
-        String serializedExpectedResult = new ObjectMapper().writeValueAsString(initialUsers);
-
-        mockMvc.perform(get(ROOT_URL + "/list"))
+        ResultActions resultActions = mockMvc.perform(get(ROOT_URL + "/list"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$", hasSize(initialUsers.size())))
-                .andExpect(result -> assertEquals(serializedExpectedResult,
-                        result.getResponse().getContentAsString(StandardCharsets.UTF_8)));
+                .andExpect(jsonPath("$", hasSize(initialUsers.size())));
+
+        validateListUserResult(resultActions, initialUsers);
+    }
+
+    void validateSingleUserResult(ResultActions resultActions, User user) throws Exception {
+        resultActions
+                .andExpect(jsonPath("$.username", is(user.getUsername())))
+                .andExpect(jsonPath("$.age", is(user.getAge())))
+                .andExpect(jsonPath("$.gender", is(user.getGender())))
+                .andExpect(jsonPath("$.email", is(user.getEmail())))
+                .andExpect(jsonPath("$.phone", is(user.getPhone())));
+    }
+
+    void validateListUserResult(ResultActions resultActions, List<User> users) throws Exception {
+        for (int i = 0; i < users.size(); i++) {
+            User user = users.get(i);
+            resultActions
+                    .andExpect(jsonPath(String.format("$[%d].username", i), is(user.getUsername())))
+                    .andExpect(jsonPath(String.format("$[%d].age"     , i), is(user.getAge())))
+                    .andExpect(jsonPath(String.format("$[%d].gender"  , i), is(user.getGender())))
+                    .andExpect(jsonPath(String.format("$[%d].email"   , i), is(user.getEmail())))
+                    .andExpect(jsonPath(String.format("$[%d].phone"   , i), is(user.getPhone())));
+        }
     }
 
     @Test
@@ -127,6 +146,34 @@ public class UserControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.error", is("invalid user")));
+    }
+
+    @Test
+    void should_delete_user_given_id() throws Exception {
+
+        int index = 0;
+
+        int id = userRepository.findByUsername(initialUsers.get(index).getUsername()).getId();
+
+        mockMvc.perform(delete(ROOT_URL + "/" + id)
+                .accept(MediaType.APPLICATION_JSON)
+                .contentType(MediaType.APPLICATION_JSON)
+                .characterEncoding(StandardCharsets.UTF_8.name()))
+
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void should_get_not_found_given_id_that_does_not_exist() throws Exception {
+
+        int id = 99999999;
+
+        mockMvc.perform(delete(ROOT_URL + "/" + id)
+                .accept(MediaType.APPLICATION_JSON)
+                .contentType(MediaType.APPLICATION_JSON)
+                .characterEncoding(StandardCharsets.UTF_8.name()))
+
+                .andExpect(status().isNotFound());
     }
 
 }

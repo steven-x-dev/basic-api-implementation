@@ -22,12 +22,32 @@ public class UserController {
     @GetMapping(path = "/list")
     public ResponseEntity<List<User>> list() {
 
-        Iterable<UserPO> userPOs = userRepository.findAll();
+        List<UserPO> userPOs = userRepository.findAll();
 
         List<User> users = new ArrayList<>();
         userPOs.forEach(userPO -> users.add(new User(userPO)));
 
         return ResponseEntity.ok(users);
+    }
+
+    @GetMapping(path = "/{id}")
+    public ResponseEntity<User> findById(@PathVariable int id) {
+        UserPO userPO = userRepository.findById(id);
+        if (userPO != null) {
+            return ResponseEntity.ok(new User(userPO));
+        } else {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @GetMapping(path = "/{username}")
+    public ResponseEntity<User> findByUsername(@PathVariable String username) {
+        UserPO userPO = userRepository.findByUsername(username);
+        if (userPO != null) {
+            return ResponseEntity.ok(new User(userPO));
+        } else {
+            return ResponseEntity.notFound().build();
+        }
     }
 
     @PostMapping
@@ -42,6 +62,17 @@ public class UserController {
         return ResponseEntity.created(null)
                 .header("id", Integer.toString(newUserPO.getId()))
                 .build();
+    }
+
+    @DeleteMapping(path = "/{id}")
+    public ResponseEntity deleteById(@PathVariable int id) {
+        UserPO existing = userRepository.findById(id);
+        if (existing != null) {
+            userRepository.deleteById(id);
+            return ResponseEntity.ok().build();
+        } else {
+            return ResponseEntity.notFound().build();
+        }
     }
 
 }
