@@ -1,11 +1,10 @@
 ### 作业要求
 
-#### 实现如下接口
-* 注册用户：参照demo，将注册用户持久化到数据库中(docker容器内启动的mysql数据库，并非内存数据库)
-* 获取用户：新增获取用户接口，传递id返回对应id的用户数据
-* 删除用户：新增删除用户接口，传递id从数据库中删除对应id用户数据
-
-* 写测试！！！
+#### 切换到课程对应的分支查看每节课的作业要求
+* Routing: routing
+* Data Binding: data-binding
+* Validation: validation
+* Customised Response: customize-response
+* Error Handling: error-handling
 
 <span style="color: red"> 注意：最终需要将改动合并到master分支 </span> 
-
