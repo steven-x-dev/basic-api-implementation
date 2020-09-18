@@ -31,18 +31,22 @@ class RsControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
-    @Autowired
-    RsEventRepository rsEventRepository;
+    private final RsEventRepository rsEventRepository;
+
+    private final UserRepository userRepository;
 
     @Autowired
-    UserRepository userRepository;
+    public RsControllerTest(RsEventRepository rsEventRepository, UserRepository userRepository) {
+        this.rsEventRepository = rsEventRepository;
+        this.userRepository = userRepository;
+    }
 
     private User alice;
     private User dave;
     private List<RsEvent> initialRsEvents;
 
     @BeforeEach
-    void init() {
+    void setUp() {
         rsEventRepository.deleteAll();
         alice = new User("Alice", 20, "female", "alice@tw.com", "13000000000");
         dave = new User("Dave", 28, "male", "dave@tw.com", "19333333333");
@@ -116,9 +120,8 @@ class RsControllerTest {
     @Test
     void should_add_rs_event_and_get_returned_id() throws Exception {
 
-        RsEvent added = new RsEvent("第四条事件", "娱乐");
         int userId = userRepository.findByUsername(alice.getUsername()).getId();
-        added.setUserId(userId);
+        RsEvent added = new RsEvent("第四条事件", "娱乐", userId);
 
         should_add_rs_event_and_get_returned_id(added);
     }
@@ -140,10 +143,8 @@ class RsControllerTest {
     @Test
     void should_get_invalid_param_error_when_add_event_given_wrong_param() throws Exception {
 
-        RsEvent added = new RsEvent("第四条事件", null);
-
         int userId = userRepository.findByUsername(alice.getUsername()).getId();
-        added.setUserId(userId);
+        RsEvent added = new RsEvent("第四条事件", null, userId);
 
         String serialized = new ObjectMapper().writeValueAsString(added);
 
@@ -161,10 +162,8 @@ class RsControllerTest {
     @Test
     void should_get_event_name_exists_error_when_add_event_given_existing_event_name() throws Exception {
 
-        RsEvent added = new RsEvent("第三条事件", "娱乐");
-
         int userId = userRepository.findByUsername(alice.getUsername()).getId();
-        added.setUserId(userId);
+        RsEvent added = new RsEvent("第三条事件", "娱乐", userId);
 
         String serialized = new ObjectMapper().writeValueAsString(added);
 
@@ -182,8 +181,7 @@ class RsControllerTest {
     @Test
     void should_get_user_not_exists_error_when_add_event_given_non_existent_user_id() throws Exception {
 
-        RsEvent added = new RsEvent("第四条事件", "娱乐");
-        added.setUserId(99999999);
+        RsEvent added = new RsEvent("第四条事件", "娱乐", 99999999);
         String serialized = new ObjectMapper().writeValueAsString(added);
 
         mockMvc.perform(post(ROOT_URL)
@@ -195,24 +193,6 @@ class RsControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.error", is("user does not exist")));
-    }
-
-    @Test
-    void should_get_invalid_param_error_when_add_event_given_null_user() throws Exception {
-
-        RsEvent added = new RsEvent("第四条事件", "娱乐");
-        added.setUserId(null);
-        String serialized = new ObjectMapper().writeValueAsString(added);
-
-        mockMvc.perform(post(ROOT_URL)
-                .accept(MediaType.APPLICATION_JSON)
-                .contentType(MediaType.APPLICATION_JSON)
-                .characterEncoding(StandardCharsets.UTF_8.name())
-                .content(serialized))
-
-                .andExpect(status().isBadRequest())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.error", is("invalid param")));
     }
 
     @Test

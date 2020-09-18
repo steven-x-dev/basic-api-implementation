@@ -1,6 +1,7 @@
 package com.thoughtworks.rslist.api;
 
 import com.thoughtworks.rslist.domain.RsEvent;
+import com.thoughtworks.rslist.exception.ParameterMissingException;
 import com.thoughtworks.rslist.exception.RsEventNotValidException;
 import com.thoughtworks.rslist.po.RsEventPO;
 import com.thoughtworks.rslist.po.UserPO;
@@ -19,18 +20,22 @@ import java.util.List;
 @RequestMapping(path = "/rs")
 public class RsController {
 
-    @Autowired
-    RsEventRepository rsEventRepository;
+    private final RsEventRepository rsEventRepository;
+
+    private final UserRepository userRepository;
 
     @Autowired
-    UserRepository userRepository;
+    public RsController(RsEventRepository rsEventRepository, UserRepository userRepository) {
+        this.rsEventRepository = rsEventRepository;
+        this.userRepository = userRepository;
+    }
 
     @GetMapping
     public ResponseEntity<RsEvent> find(@RequestParam(required = false) String eventName,
                                         @RequestParam(required = false) Integer id) {
 
         if (eventName == null && id == null)
-            throw new RsEventNotValidException("missing parameter");
+            throw new ParameterMissingException("parameter missing");
 
         RsEventPO rsEventPO;
 
@@ -64,9 +69,6 @@ public class RsController {
 
     @PostMapping
     public ResponseEntity add(@RequestBody @Validated RsEvent event) {
-
-        if (event.getUserId() == null)
-            throw new RsEventNotValidException("invalid param");
 
         int userId = event.getUserId();
         UserPO userPO = userRepository.findById(userId);

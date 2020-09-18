@@ -22,14 +22,10 @@ public class RsEvent {
     @NotNull
     private String keyword;
 
+    @NotNull
     private Integer userId;
 
-    public RsEvent(@NotNull String eventName, @NotNull String keyword) {
-        this.eventName = eventName;
-        this.keyword = keyword;
-    }
-
-    public RsEvent(@NotNull String eventName, @NotNull String keyword, Integer userId) {
+    public RsEvent(@NotNull String eventName, @NotNull String keyword, @NotNull Integer userId) {
         this.eventName = eventName;
         this.keyword = keyword;
         this.userId = userId;

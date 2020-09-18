@@ -1,80 +1,88 @@
 package com.thoughtworks.rslist.api;
 
 import com.thoughtworks.rslist.domain.User;
+import com.thoughtworks.rslist.exception.ParameterMissingException;
 import com.thoughtworks.rslist.exception.UserNotValidException;
-import com.thoughtworks.rslist.po.UserPO;
-import com.thoughtworks.rslist.repository.UserRepository;
+import com.thoughtworks.rslist.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @RestController
 @RequestMapping(path = "/user")
 public class UserController {
 
+    private final UserService userService;
+
     @Autowired
-    UserRepository userRepository;
+    public UserController(UserService userService) {
+        this.userService = userService;
+    }
 
     @GetMapping(path = "/list")
     public ResponseEntity<List<User>> list() {
-
-        List<UserPO> userPOs = userRepository.findAll();
-
-        List<User> users = new ArrayList<>();
-        userPOs.forEach(userPO -> users.add(new User(userPO)));
-
+        List<User> users = userService.list();
         return ResponseEntity.ok(users);
     }
 
     @GetMapping
     public ResponseEntity<User> find(@RequestParam(required = false) String username,
-                                        @RequestParam(required = false) Integer id) {
+                                     @RequestParam(required = false) Integer id) {
 
         if (username == null && id == null)
-            throw new UserNotValidException("missing parameter");
+            throw new ParameterMissingException("parameter missing");
 
-        UserPO userPO;
+        User user;
 
         if (username == null) {
-            int userId = id;
-            userPO = userRepository.findById(userId);
+            user = userService.findById(id);
         } else if (id == null) {
-            userPO = userRepository.findByUsername(username);
+            user = userService.findByUsername(username);
         } else {
-            int userId = id;
-            userPO = userRepository.findByIdAndUsername(userId, username);
+            user = userService.findByIdAndUsername(id, username);
         }
 
-        if (userPO != null) {
-            return ResponseEntity.ok(new User(userPO));
+        if (user != null) {
+            return ResponseEntity.ok(user);
         } else {
             return ResponseEntity.notFound().build();
         }
     }
 
     @PostMapping
-    public ResponseEntity add(@RequestBody @Validated User newUser) {
+    public ResponseEntity register(@RequestBody @Validated User user) {
 
-        if (userRepository.existsByUsername(newUser.getUsername()))
-            throw new UserNotValidException(String.format("username %s is used", newUser.getUsername()));
+        Integer newUserId = userService.save(user);
 
-        UserPO newUserPO = new UserPO(newUser);
-        userRepository.save(newUserPO);
+        if (newUserId == null)
+            throw new UserNotValidException(String.format("username %s is used", user.getUsername()));
 
         return ResponseEntity.created(null)
-                .header("id", Integer.toString(newUserPO.getId()))
+                .header("id", Integer.toString(newUserId))
                 .build();
     }
 
     @DeleteMapping
-    public ResponseEntity deleteById(@RequestParam int id) {
-        UserPO existing = userRepository.findById(id);
-        if (existing != null) {
-            userRepository.deleteById(id);
+    public ResponseEntity delete(@RequestParam(required = false) String username,
+                                 @RequestParam(required = false) Integer id) {
+
+        if (username == null && id == null)
+            throw new ParameterMissingException("parameter missing");
+
+        boolean isOk;
+
+        if (username == null) {
+            isOk = userService.deleteById(id);
+        } else if (id == null) {
+            isOk = userService.deleteByUsername(username);
+        } else {
+            isOk = userService.deleteByIdAndUsername(id, username);
+        }
+
+        if (isOk) {
             return ResponseEntity.ok().build();
         } else {
             return ResponseEntity.notFound().build();

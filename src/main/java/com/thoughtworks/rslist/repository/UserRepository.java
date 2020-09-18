@@ -10,11 +10,17 @@ public interface UserRepository extends CrudRepository<UserPO, Integer> {
 
     boolean existsByUsername(String username);
 
-    UserPO findByUsername(String username);
+    boolean existsByIdAndUsername(int id, String username);
 
     UserPO findById(int id);
 
+    UserPO findByUsername(String username);
+
     UserPO findByIdAndUsername(int id, String username);
+
+    void deleteByUsername(String username);
+
+    void deleteByIdAndUsername(int id, String username);
 
     List<UserPO> findAll();
 }

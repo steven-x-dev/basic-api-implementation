@@ -31,14 +31,18 @@ public class UserControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
+    private final UserRepository userRepository;
+
     @Autowired
-    private UserRepository userRepository;
+    public UserControllerTest(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
 
     private List<User> initialUsers;
     private User dave;
 
     @BeforeEach
-    void init() {
+    void setUp() {
         userRepository.deleteAll();
         initialUsers = new ArrayList<User>() {{
             add(new User("Alice", 20, "female", "alice@tw.com", "13000000000"));
@@ -49,7 +53,7 @@ public class UserControllerTest {
         initialUsers.forEach(u -> {
             Exception exception = null;
             try {
-                should_add_user(u);
+                addUser(u);
             } catch (Exception e) {
                 exception = e;
             }
@@ -59,25 +63,25 @@ public class UserControllerTest {
 
     @Test
     void should_add_user() throws Exception {
-        should_add_user(dave);
-    }
-
-    private void should_add_user(User user) throws Exception {
 
         long countBefore = userRepository.count();
 
-        String serialized = new ObjectMapper().writeValueAsString(user);
-
-        mockMvc.perform(post(ROOT_URL)
-                .accept(MediaType.APPLICATION_JSON)
-                .contentType(MediaType.APPLICATION_JSON)
-                .characterEncoding(StandardCharsets.UTF_8.name())
-                .content(serialized))
-
+        addUser(dave)
                 .andExpect(status().isCreated())
                 .andExpect(header().string("id", any(String.class)));
 
         assertEquals(countBefore + 1, userRepository.count());
+    }
+
+    private ResultActions addUser(User user) throws Exception {
+
+        String serialized = new ObjectMapper().writeValueAsString(user);
+
+        return mockMvc.perform(post(ROOT_URL)
+                .accept(MediaType.APPLICATION_JSON)
+                .contentType(MediaType.APPLICATION_JSON)
+                .characterEncoding(StandardCharsets.UTF_8.name())
+                .content(serialized));
     }
 
     @Test
@@ -170,7 +174,8 @@ public class UserControllerTest {
                 .andExpect(jsonPath("$.age",      is(user.getAge())))
                 .andExpect(jsonPath("$.gender",   is(user.getGender())))
                 .andExpect(jsonPath("$.email",    is(user.getEmail())))
-                .andExpect(jsonPath("$.phone",    is(user.getPhone())));
+                .andExpect(jsonPath("$.phone",    is(user.getPhone())))
+                .andExpect(jsonPath("$.votes",    is(10)));
     }
 
     void validateListUserResult(ResultActions resultActions, List<User> users) throws Exception {
@@ -181,12 +186,13 @@ public class UserControllerTest {
                     .andExpect(jsonPath(String.format("$[%d].age"     , i), is(user.getAge())))
                     .andExpect(jsonPath(String.format("$[%d].gender"  , i), is(user.getGender())))
                     .andExpect(jsonPath(String.format("$[%d].email"   , i), is(user.getEmail())))
-                    .andExpect(jsonPath(String.format("$[%d].phone"   , i), is(user.getPhone())));
+                    .andExpect(jsonPath(String.format("$[%d].phone"   , i), is(user.getPhone())))
+                    .andExpect(jsonPath(String.format("$[%d].votes"   , i), is(10)));
         }
     }
 
     @Test
-    void should_get_invalid_user_error_when_add_user_given_wrong_user_param() throws Exception {
+    void should_get_invalid_param_error_when_add_user_given_wrong_user_param() throws Exception {
 
         dave.setPhone(null);
         String serialized = new ObjectMapper().writeValueAsString(dave);
@@ -199,7 +205,7 @@ public class UserControllerTest {
 
                 .andExpect(status().isBadRequest())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.error", is("invalid user")));
+                .andExpect(jsonPath("$.error", is("invalid param")));
     }
 
     @Test

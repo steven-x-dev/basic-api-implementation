@@ -1,12 +1,12 @@
 package com.thoughtworks.rslist.exception;
 
-public class Err {
+public class Error {
 
     private String error;
 
-    public Err() { }
+    public Error() { }
 
-    public Err(String error) {
+    public Error(String error) {
         this.error = error;
     }
 
