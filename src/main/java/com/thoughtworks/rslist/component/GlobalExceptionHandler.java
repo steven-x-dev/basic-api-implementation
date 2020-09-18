@@ -3,7 +3,7 @@ package com.thoughtworks.rslist.component;
 import com.thoughtworks.rslist.domain.User;
 import com.thoughtworks.rslist.exception.Err;
 import com.thoughtworks.rslist.exception.RsEventNotValidException;
-import com.thoughtworks.rslist.exception.UserNameOccupiedException;
+import com.thoughtworks.rslist.exception.UserNotValidException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -14,7 +14,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler({
             RsEventNotValidException.class,
-            UserNameOccupiedException.class,
+            UserNotValidException.class,
             MethodArgumentNotValidException.class,
     })
     public ResponseEntity<Err> handleException(Exception e) {
@@ -23,7 +23,7 @@ public class GlobalExceptionHandler {
 
         if (e instanceof RsEventNotValidException) {
             message = e.getMessage();
-        } else if (e instanceof UserNameOccupiedException) {
+        } else if (e instanceof UserNotValidException) {
             message = e.getMessage();
         } else if (e instanceof MethodArgumentNotValidException) {
             Object target = ((MethodArgumentNotValidException) e).getBindingResult().getTarget();

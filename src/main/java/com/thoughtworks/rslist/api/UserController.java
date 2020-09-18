@@ -1,14 +1,14 @@
 package com.thoughtworks.rslist.api;
 
 import com.thoughtworks.rslist.domain.User;
-import com.thoughtworks.rslist.exception.UserNameOccupiedException;
+import com.thoughtworks.rslist.exception.UserNotValidException;
 import com.thoughtworks.rslist.po.UserPO;
 import com.thoughtworks.rslist.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
-import javax.validation.Valid;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -30,19 +30,25 @@ public class UserController {
         return ResponseEntity.ok(users);
     }
 
-    @GetMapping(path = "/{id}")
-    public ResponseEntity<User> findById(@PathVariable int id) {
-        UserPO userPO = userRepository.findById(id);
-        if (userPO != null) {
-            return ResponseEntity.ok(new User(userPO));
-        } else {
-            return ResponseEntity.notFound().build();
-        }
-    }
+    @GetMapping
+    public ResponseEntity<User> find(@RequestParam(required = false) String username,
+                                        @RequestParam(required = false) Integer id) {
 
-    @GetMapping(path = "/{username}")
-    public ResponseEntity<User> findByUsername(@PathVariable String username) {
-        UserPO userPO = userRepository.findByUsername(username);
+        if (username == null && id == null)
+            throw new UserNotValidException("missing parameter");
+
+        UserPO userPO;
+
+        if (username == null) {
+            int userId = id;
+            userPO = userRepository.findById(userId);
+        } else if (id == null) {
+            userPO = userRepository.findByUsername(username);
+        } else {
+            int userId = id;
+            userPO = userRepository.findByIdAndUsername(userId, username);
+        }
+
         if (userPO != null) {
             return ResponseEntity.ok(new User(userPO));
         } else {
@@ -51,10 +57,10 @@ public class UserController {
     }
 
     @PostMapping
-    public ResponseEntity add(@RequestBody @Valid User newUser) {
+    public ResponseEntity add(@RequestBody @Validated User newUser) {
 
         if (userRepository.existsByUsername(newUser.getUsername()))
-            throw new UserNameOccupiedException(String.format("username %s is used", newUser.getUsername()));
+            throw new UserNotValidException(String.format("username %s is used", newUser.getUsername()));
 
         UserPO newUserPO = new UserPO(newUser);
         userRepository.save(newUserPO);
@@ -64,8 +70,8 @@ public class UserController {
                 .build();
     }
 
-    @DeleteMapping(path = "/{id}")
-    public ResponseEntity deleteById(@PathVariable int id) {
+    @DeleteMapping
+    public ResponseEntity deleteById(@RequestParam int id) {
         UserPO existing = userRepository.findById(id);
         if (existing != null) {
             userRepository.deleteById(id);

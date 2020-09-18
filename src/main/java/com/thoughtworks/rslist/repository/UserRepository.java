@@ -14,5 +14,7 @@ public interface UserRepository extends CrudRepository<UserPO, Integer> {
 
     UserPO findById(int id);
 
+    UserPO findByIdAndUsername(int id, String username);
+
     List<UserPO> findAll();
 }

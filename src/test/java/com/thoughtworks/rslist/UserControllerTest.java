@@ -83,7 +83,7 @@ public class UserControllerTest {
     @Test
     void should_get_username_exists_error_when_add_user_given_existing_username() throws Exception {
 
-        String existingUsername = userRepository.findAll().iterator().next().getUsername();
+        String existingUsername = userRepository.findAll().get(0).getUsername();
         dave.setUsername(existingUsername);
 
         String serialized = new ObjectMapper().writeValueAsString(dave);
@@ -100,6 +100,60 @@ public class UserControllerTest {
     }
 
     @Test
+    void should_get_single_user_by_id() throws Exception {
+
+        User user = initialUsers.get(0);
+        int id = userRepository.findByUsername(user.getUsername()).getId();
+
+        ResultActions resultActions = mockMvc.perform(
+                get(ROOT_URL).param("id", Integer.toString(id)))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
+
+        validateSingleUserResult(resultActions, user);
+    }
+
+    @Test
+    void should_get_single_user_by_username() throws Exception {
+
+        User user = initialUsers.get(0);
+
+        ResultActions resultActions = mockMvc.perform(
+                get(ROOT_URL).param("username", user.getUsername()))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
+
+        validateSingleUserResult(resultActions, user);
+    }
+
+    @Test
+    void should_get_single_user_by_both() throws Exception {
+
+        User user = initialUsers.get(0);
+        int id = userRepository.findByUsername(user.getUsername()).getId();
+
+        ResultActions resultActions = mockMvc.perform(get(ROOT_URL)
+                .param("username", user.getUsername())
+                .param("id", Integer.toString(id)))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
+
+        validateSingleUserResult(resultActions, user);
+    }
+
+    @Test
+    void should_get_not_found_error_by_both() throws Exception {
+
+        User user = initialUsers.get(0);
+        int id = 99999999;
+
+        ResultActions resultActions = mockMvc.perform(get(ROOT_URL)
+                .param("username", user.getUsername())
+                .param("id", Integer.toString(id)))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
     void should_get_all_users() throws Exception {
 
         ResultActions resultActions = mockMvc.perform(get(ROOT_URL + "/list"))
@@ -113,10 +167,10 @@ public class UserControllerTest {
     void validateSingleUserResult(ResultActions resultActions, User user) throws Exception {
         resultActions
                 .andExpect(jsonPath("$.username", is(user.getUsername())))
-                .andExpect(jsonPath("$.age", is(user.getAge())))
-                .andExpect(jsonPath("$.gender", is(user.getGender())))
-                .andExpect(jsonPath("$.email", is(user.getEmail())))
-                .andExpect(jsonPath("$.phone", is(user.getPhone())));
+                .andExpect(jsonPath("$.age",      is(user.getAge())))
+                .andExpect(jsonPath("$.gender",   is(user.getGender())))
+                .andExpect(jsonPath("$.email",    is(user.getEmail())))
+                .andExpect(jsonPath("$.phone",    is(user.getPhone())));
     }
 
     void validateListUserResult(ResultActions resultActions, List<User> users) throws Exception {
@@ -155,7 +209,8 @@ public class UserControllerTest {
 
         int id = userRepository.findByUsername(initialUsers.get(index).getUsername()).getId();
 
-        mockMvc.perform(delete(ROOT_URL + "/" + id)
+        mockMvc.perform(delete(ROOT_URL)
+                .param("id", Integer.toString(id))
                 .accept(MediaType.APPLICATION_JSON)
                 .contentType(MediaType.APPLICATION_JSON)
                 .characterEncoding(StandardCharsets.UTF_8.name()))
@@ -164,11 +219,12 @@ public class UserControllerTest {
     }
 
     @Test
-    void should_get_not_found_given_id_that_does_not_exist() throws Exception {
+    void should_get_not_found_when_delete_given_non_existent_id() throws Exception {
 
         int id = 99999999;
 
-        mockMvc.perform(delete(ROOT_URL + "/" + id)
+        mockMvc.perform(delete(ROOT_URL)
+                .param("id", Integer.toString(id))
                 .accept(MediaType.APPLICATION_JSON)
                 .contentType(MediaType.APPLICATION_JSON)
                 .characterEncoding(StandardCharsets.UTF_8.name()))

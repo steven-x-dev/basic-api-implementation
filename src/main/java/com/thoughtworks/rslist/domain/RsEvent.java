@@ -1,12 +1,20 @@
 package com.thoughtworks.rslist.domain;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.thoughtworks.rslist.po.RsEventPO;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 
+@Data
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
 public class RsEvent {
+
+    private Integer id;
 
     @NotNull
     private String eventName;
@@ -14,45 +22,24 @@ public class RsEvent {
     @NotNull
     private String keyword;
 
-    @Valid
-    private User user;
+    private Integer userId;
 
-    public RsEvent() {}
-
-    public RsEvent(String eventName, String keyword) {
+    public RsEvent(@NotNull String eventName, @NotNull String keyword) {
         this.eventName = eventName;
         this.keyword = keyword;
     }
 
-    public RsEvent(String eventName, String keyword, User user) {
+    public RsEvent(@NotNull String eventName, @NotNull String keyword, Integer userId) {
         this.eventName = eventName;
         this.keyword = keyword;
-        this.user = user;
+        this.userId = userId;
     }
 
-    public String getEventName() {
-        return eventName;
+    public RsEvent(RsEventPO rsEventPO) {
+        id = rsEventPO.getId();
+        eventName = rsEventPO.getEventName();
+        keyword = rsEventPO.getKeyword();
+        userId = rsEventPO.getUserPO().getId();
     }
 
-    public void setEventName(String eventName) {
-        this.eventName = eventName;
-    }
-
-    public String getKeyword() {
-        return keyword;
-    }
-
-    public void setKeyword(String keyword) {
-        this.keyword = keyword;
-    }
-
-    @JsonIgnore
-    public User getUser() {
-        return user;
-    }
-
-    @JsonProperty
-    public void setUser(User user) {
-        this.user = user;
-    }
 }
