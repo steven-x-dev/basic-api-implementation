@@ -47,7 +47,7 @@ public class UserControllerTest {
         initialUsers = new ArrayList<User>() {{
             add(new User("Alice", 20, "female", "alice@tw.com", "13000000000"));
             add(new User("Bob", 22, "male", "bob@tw.com", "15111111111"));
-            add(new User("Charlie", 25, "female", "charlie@tw.com", "18222222222"));
+            add(new User("Charlie", 25, "male", "charlie@tw.com", "18222222222"));
         }};
         dave = new User("Dave", 28, "male", "dave@tw.com", "19333333333");
         initialUsers.forEach(u -> {
@@ -212,7 +212,6 @@ public class UserControllerTest {
     void should_delete_user_given_id() throws Exception {
 
         int index = 0;
-
         int id = userRepository.findByUsername(initialUsers.get(index).getUsername()).getId();
 
         mockMvc.perform(delete(ROOT_URL)

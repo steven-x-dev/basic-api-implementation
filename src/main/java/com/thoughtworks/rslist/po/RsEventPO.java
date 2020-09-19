@@ -24,6 +24,7 @@ public class RsEventPO {
     private String keyword;
 
     @ManyToOne
+    @JoinColumn(name = "user_id")
     private UserPO userPO;
 
 }

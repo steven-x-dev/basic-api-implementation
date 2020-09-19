@@ -34,8 +34,6 @@ public class UserPO {
     private int votes;
 
     @OneToMany(cascade = CascadeType.REMOVE, mappedBy = "userPO")
-//    @OnDelete(action = OnDeleteAction.CASCADE)
-//    @JoinColumn
     private List<RsEventPO> rsEventPOs;
 
     public UserPO(User user) {
