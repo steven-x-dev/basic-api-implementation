@@ -24,9 +24,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 
 @SpringBootTest
 @AutoConfigureMockMvc
-class RsControllerTest {
+class RsEventControllerTest {
 
-    private static final String ROOT_URL = "/rs";
+    private static final String ROOT_URL = "/event";
 
     @Autowired
     private MockMvc mockMvc;
@@ -36,7 +36,7 @@ class RsControllerTest {
     private final UserRepository userRepository;
 
     @Autowired
-    public RsControllerTest(RsEventRepository rsEventRepository, UserRepository userRepository) {
+    public RsEventControllerTest(RsEventRepository rsEventRepository, UserRepository userRepository) {
         this.rsEventRepository = rsEventRepository;
         this.userRepository = userRepository;
     }
@@ -59,7 +59,7 @@ class RsControllerTest {
         initialRsEvents.forEach(event -> {
             Exception exception = null;
             try {
-                should_add_rs_event_and_get_returned_id(event);
+                addEvent(event);
             } catch (Exception e) {
                 exception = e;
             }
@@ -81,23 +81,6 @@ class RsControllerTest {
         validateSingleRsEventResult(resultActions, event);
     }
 
-    void validateSingleRsEventResult(ResultActions resultActions, RsEvent event) throws Exception {
-        resultActions
-                .andExpect(jsonPath("$.eventName", is(event.getEventName())))
-                .andExpect(jsonPath("$.keyword"  , is(event.getKeyword())))
-                .andExpect(jsonPath("$.userId"   , is(event.getUserId())));
-    }
-
-    void validateListRsEventResult(ResultActions resultActions, List<RsEvent> events) throws Exception {
-        for (int i = 0; i < events.size(); i++) {
-            RsEvent event = events.get(i);
-            resultActions
-                    .andExpect(jsonPath(String.format("$[%d].eventName", i), is(event.getEventName())))
-                    .andExpect(jsonPath(String.format("$[%d].keyword"  , i), is(event.getKeyword())))
-                    .andExpect(jsonPath(String.format("$[%d].userId"   , i), is(event.getUserId())));
-        }
-    }
-
     @Test
     void should_get_invalid_index_error_when_find_one_rs_event_given_non_existent_id() throws Exception {
         int id = 99999999;
@@ -117,27 +100,43 @@ class RsControllerTest {
         validateListRsEventResult(resultActions, initialRsEvents);
     }
 
+    void validateSingleRsEventResult(ResultActions resultActions, RsEvent event) throws Exception {
+        resultActions
+                .andExpect(jsonPath("$.eventName", is(event.getEventName())))
+                .andExpect(jsonPath("$.keyword"  , is(event.getKeyword())))
+                .andExpect(jsonPath("$.userId"   , is(event.getUserId())));
+    }
+
+    void validateListRsEventResult(ResultActions resultActions, List<RsEvent> events) throws Exception {
+        for (int i = 0; i < events.size(); i++) {
+            RsEvent event = events.get(i);
+            resultActions
+                    .andExpect(jsonPath(String.format("$[%d].eventName", i), is(event.getEventName())))
+                    .andExpect(jsonPath(String.format("$[%d].keyword"  , i), is(event.getKeyword())))
+                    .andExpect(jsonPath(String.format("$[%d].userId"   , i), is(event.getUserId())));
+        }
+    }
+
     @Test
     void should_add_rs_event_and_get_returned_id() throws Exception {
 
         int userId = userRepository.findByUsername(alice.getUsername()).getId();
         RsEvent added = new RsEvent("第四条事件", "娱乐", userId);
 
-        should_add_rs_event_and_get_returned_id(added);
+        addEvent(added)
+                .andExpect(status().isCreated())
+                .andExpect(header().string("id", any(String.class)));
     }
 
-    private void should_add_rs_event_and_get_returned_id(RsEvent added) throws Exception {
+    private ResultActions addEvent(RsEvent added) throws Exception {
 
         String serialized = new ObjectMapper().writeValueAsString(added);
 
-        mockMvc.perform(post(ROOT_URL)
+        return mockMvc.perform(post(ROOT_URL)
                 .accept(MediaType.APPLICATION_JSON)
                 .contentType(MediaType.APPLICATION_JSON)
                 .characterEncoding(StandardCharsets.UTF_8.name())
-                .content(serialized))
-
-                .andExpect(status().isCreated())
-                .andExpect(header().string("id", any(String.class)));
+                .content(serialized));
     }
 
     @Test
@@ -205,7 +204,7 @@ class RsControllerTest {
         keywordUpdated.setKeyword("时事");
         String serializedKeywordUpdated = new ObjectMapper().writeValueAsString(keywordUpdated);
 
-        ResultActions resultActions1 = mockMvc.perform(patch(ROOT_URL)
+        mockMvc.perform(patch(ROOT_URL)
                 .param("id", Integer.toString(id1))
                 .accept(MediaType.APPLICATION_JSON)
                 .contentType(MediaType.APPLICATION_JSON)
@@ -214,8 +213,6 @@ class RsControllerTest {
 
                 .andExpect(status().isOk());
 
-        validateSingleRsEventResult(resultActions1, keywordUpdated);
-
         int index2 = 1;
 
         RsEvent nameUpdated = initialRsEvents.get(index2);
@@ -223,7 +220,7 @@ class RsControllerTest {
         keywordUpdated.setEventName("第二条热搜");
         String serializedNameUpdated = new ObjectMapper().writeValueAsString(nameUpdated);
 
-        ResultActions resultActions2 = mockMvc.perform(patch(ROOT_URL)
+        mockMvc.perform(patch(ROOT_URL)
                 .param("id", Integer.toString(id2))
                 .accept(MediaType.APPLICATION_JSON)
                 .contentType(MediaType.APPLICATION_JSON)
@@ -231,8 +228,6 @@ class RsControllerTest {
                 .content(serializedNameUpdated))
 
                 .andExpect(status().isOk());
-
-        validateSingleRsEventResult(resultActions2, nameUpdated);
 
         int index3 = 0;
 
@@ -242,7 +237,7 @@ class RsControllerTest {
         bothUpdated.setKeyword("历史");
         String serializedBothUpdated = new ObjectMapper().writeValueAsString(bothUpdated);
 
-        ResultActions resultActions3 = mockMvc.perform(patch(ROOT_URL)
+        mockMvc.perform(patch(ROOT_URL)
                 .param("id", Integer.toString(id3))
                 .accept(MediaType.APPLICATION_JSON)
                 .contentType(MediaType.APPLICATION_JSON)
@@ -250,8 +245,6 @@ class RsControllerTest {
                 .content(serializedBothUpdated))
 
                 .andExpect(status().isOk());
-
-        validateSingleRsEventResult(resultActions3, bothUpdated);
     }
 
     @Test

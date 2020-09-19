@@ -1,6 +1,8 @@
 package com.thoughtworks.rslist.service;
 
 import com.thoughtworks.rslist.domain.User;
+import com.thoughtworks.rslist.exception.ResourceExistsException;
+import com.thoughtworks.rslist.exception.ResourceNotExistsException;
 import com.thoughtworks.rslist.po.UserPO;
 import com.thoughtworks.rslist.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -61,37 +63,34 @@ public class UserService {
         return userRepository.existsByUsername(username);
     }
 
-    public Integer save(User user) {
-        if (existsByUsername(user.getUsername())) {
-            return null;
+    public int create(User user) {
+        if (userRepository.existsByUsername(user.getUsername())) {
+            throw new ResourceExistsException("username", user.getUsername());
         }
         UserPO userPO = new UserPO(user);
         userRepository.save(userPO);
         return userPO.getId();
     }
 
-    public boolean deleteById(int id) {
+    public void deleteById(int id) {
         if (!userRepository.existsById(id)) {
-            return false;
+            throw new ResourceNotExistsException("user id");
         }
         userRepository.deleteById(id);
-        return true;
     }
 
-    public boolean deleteByUsername(String username) {
+    public void deleteByUsername(String username) {
         if (!userRepository.existsByUsername(username)) {
-            return false;
+            throw new ResourceNotExistsException("username", username);
         }
         userRepository.deleteByUsername(username);
-        return true;
     }
 
-    public boolean deleteByIdAndUsername(int id, String username) {
+    public void deleteByIdAndUsername(int id, String username) {
         if (!userRepository.existsByIdAndUsername(id, username)) {
-            return false;
+            throw new ResourceNotExistsException("user with id and username", username);
         }
         userRepository.deleteByIdAndUsername(id, username);
-        return true;
     }
 
 }

@@ -100,7 +100,7 @@ public class UserControllerTest {
 
                 .andExpect(status().isBadRequest())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.error", is(String.format("username %s is used", existingUsername))));
+                .andExpect(jsonPath("$.error", is(String.format("username %s already exists", existingUsername))));
     }
 
     @Test

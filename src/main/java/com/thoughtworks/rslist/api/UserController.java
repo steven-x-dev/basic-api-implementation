@@ -2,7 +2,6 @@ package com.thoughtworks.rslist.api;
 
 import com.thoughtworks.rslist.domain.User;
 import com.thoughtworks.rslist.exception.ParameterMissingException;
-import com.thoughtworks.rslist.exception.UserNotValidException;
 import com.thoughtworks.rslist.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -33,7 +32,7 @@ public class UserController {
                                      @RequestParam(required = false) Integer id) {
 
         if (username == null && id == null)
-            throw new ParameterMissingException("parameter missing");
+            throw new ParameterMissingException("username", "id");
 
         User user;
 
@@ -54,12 +53,7 @@ public class UserController {
 
     @PostMapping
     public ResponseEntity register(@RequestBody @Validated User user) {
-
-        Integer newUserId = userService.save(user);
-
-        if (newUserId == null)
-            throw new UserNotValidException(String.format("username %s is used", user.getUsername()));
-
+        int newUserId = userService.create(user);
         return ResponseEntity.created(null)
                 .header("id", Integer.toString(newUserId))
                 .build();
@@ -70,23 +64,17 @@ public class UserController {
                                  @RequestParam(required = false) Integer id) {
 
         if (username == null && id == null)
-            throw new ParameterMissingException("parameter missing");
-
-        boolean isOk;
+            throw new ParameterMissingException("username", "id");
 
         if (username == null) {
-            isOk = userService.deleteById(id);
+            userService.deleteById(id);
         } else if (id == null) {
-            isOk = userService.deleteByUsername(username);
+            userService.deleteByUsername(username);
         } else {
-            isOk = userService.deleteByIdAndUsername(id, username);
+            userService.deleteByIdAndUsername(id, username);
         }
 
-        if (isOk) {
-            return ResponseEntity.ok().build();
-        } else {
-            return ResponseEntity.notFound().build();
-        }
+        return ResponseEntity.ok().build();
     }
 
 }
