@@ -2,12 +2,15 @@ package com.thoughtworks.rslist;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.thoughtworks.rslist.domain.User;
+import com.thoughtworks.rslist.po.UserPO;
 import com.thoughtworks.rslist.repository.UserRepository;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
@@ -15,18 +18,27 @@ import org.springframework.test.web.servlet.ResultActions;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static org.hamcrest.Matchers.*;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest
 @AutoConfigureMockMvc
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class UserControllerTest {
 
+    private static final boolean BULK_MODE = true;
+
     private static final String ROOT_URL = "/user";
+
+    private static List<User> existingUsers;
+    private static User newUser;
+
+    private static int pageIndex;
+    private static int pageSize;
 
     @Autowired
     private MockMvc mockMvc;
@@ -38,59 +50,83 @@ public class UserControllerTest {
         this.userRepository = userRepository;
     }
 
-    private List<User> initialUsers;
-    private User dave;
+    @BeforeAll
+    static void beforeAll() {
+        newUser = new User("newuser", 28, "male", "newuser@tw.com", "18888888888");
+        pageIndex = 1;
+        pageSize = 10;
+    }
 
     @BeforeEach
     void setUp() {
-        userRepository.deleteAll();
-        initialUsers = new ArrayList<User>() {{
-            add(new User("Alice", 20, "female", "alice@tw.com", "13000000000"));
-            add(new User("Bob", 22, "male", "bob@tw.com", "15111111111"));
-            add(new User("Charlie", 25, "male", "charlie@tw.com", "18222222222"));
-        }};
-        dave = new User("Dave", 28, "male", "dave@tw.com", "19333333333");
-        initialUsers.forEach(u -> {
-            Exception exception = null;
-            try {
-                addUser(u);
-            } catch (Exception e) {
-                exception = e;
-            }
-            assertNull(exception);
-        });
+        if (BULK_MODE) return;
+        init();
     }
 
     @Test
-    void should_add_user() throws Exception {
+    @Order(0)
+    void setUpForBulkMode() {
+        if (!BULK_MODE) return;
+        init();
+    }
+
+    private void init() {
+        Pageable pageable = PageRequest.of(pageIndex - 1, pageSize);
+        Page<UserPO> page = userRepository.findAll(pageable);
+        existingUsers = new ArrayList<>();
+        page.forEach(userPO -> existingUsers.add(new User(userPO)));
+    }
+
+    private void setUpAndTearDownForAdd() {
+        if (userRepository.existsByUsername(newUser.getUsername())) {
+            userRepository.deleteByUsername(newUser.getUsername());
+        }
+    }
+
+    @Test
+    @Order(1)
+    void should_add_user_get_returned_id() throws Exception {
+
+        setUpAndTearDownForAdd();
 
         long countBefore = userRepository.count();
 
-        addUser(dave)
-                .andExpect(status().isCreated())
-                .andExpect(header().string("id", any(String.class)));
+        String serialized = new ObjectMapper().writeValueAsString(newUser);
 
-        assertEquals(countBefore + 1, userRepository.count());
-    }
-
-    private ResultActions addUser(User user) throws Exception {
-
-        String serialized = new ObjectMapper().writeValueAsString(user);
-
-        return mockMvc.perform(post(ROOT_URL)
+        mockMvc.perform(post(ROOT_URL)
                 .accept(MediaType.APPLICATION_JSON)
                 .contentType(MediaType.APPLICATION_JSON)
                 .characterEncoding(StandardCharsets.UTF_8.name())
-                .content(serialized));
+                .content(serialized))
+
+                .andExpect(status().isCreated())
+                .andExpect(header().string("id", any(String.class)))
+                .andDo(result -> {
+                    String headerId = result.getResponse().getHeader("id");
+                    if (headerId != null) {
+                        newUser.setId(Long.parseLong(headerId));
+                    } else {
+                        fail();
+                    }
+                });
+
+        assertEquals(countBefore + 1, userRepository.count());
+
+        setUpAndTearDownForAdd();
     }
 
     @Test
+    @Order(2)
     void should_get_username_exists_error_when_add_user_given_existing_username() throws Exception {
 
-        String existingUsername = userRepository.findAll().get(0).getUsername();
-        dave.setUsername(existingUsername);
+        Pageable pageable = PageRequest.of(0, 1);
+        Page<UserPO> page = userRepository.findAll(pageable);
 
-        String serialized = new ObjectMapper().writeValueAsString(dave);
+        String existingUsername = page.stream().collect(Collectors.toList()).get(0).getUsername();
+        User existing = new User(newUser);
+        existing.setUsername(existingUsername);
+
+        String serialized = new ObjectMapper().writeValueAsString(existing);
 
         mockMvc.perform(post(ROOT_URL)
                 .accept(MediaType.APPLICATION_JSON)
@@ -103,14 +139,68 @@ public class UserControllerTest {
                 .andExpect(jsonPath("$.error", is(String.format("username %s already exists", existingUsername))));
     }
 
+    private void setUpForDelete() {
+        boolean result = !userRepository.existsByUsername(newUser.getUsername());
+        if (result) {
+            UserPO newUserPO = UserPO.builder()
+                    .username(newUser.getUsername())
+                    .gender(newUser.getGender())
+                    .age(newUser.getAge())
+                    .email(newUser.getEmail())
+                    .phone(newUser.getPhone())
+                    .votes(10)
+                    .build();
+            userRepository.save(newUserPO);
+            newUser.setId(newUserPO.getId());
+            newUser.setVotes(newUserPO.getVotes());
+        }
+    }
+
+    @Test
+    @Order(3)
+    void should_delete_user_given_id() throws Exception {
+
+        setUpForDelete();
+
+        assertNotNull(newUser.getId());
+        long id = newUser.getId();
+
+        long countBefore = userRepository.count();
+
+        mockMvc.perform(delete(ROOT_URL)
+                .param("id", Long.toString(id))
+                .accept(MediaType.APPLICATION_JSON)
+                .contentType(MediaType.APPLICATION_JSON)
+                .characterEncoding(StandardCharsets.UTF_8.name()))
+
+                .andExpect(status().isOk());
+
+        assertEquals(countBefore - 1, userRepository.count());
+    }
+
+    @Test
+    @Order(4)
+    void should_get_not_found_when_delete_given_non_existent_id() throws Exception {
+
+        long id = 99999999L;
+
+        mockMvc.perform(delete(ROOT_URL)
+                .param("id", Long.toString(id))
+                .accept(MediaType.APPLICATION_JSON)
+                .contentType(MediaType.APPLICATION_JSON)
+                .characterEncoding(StandardCharsets.UTF_8.name()))
+
+                .andExpect(status().isNotFound());
+    }
+
     @Test
     void should_get_single_user_by_id() throws Exception {
 
-        User user = initialUsers.get(0);
-        int id = userRepository.findByUsername(user.getUsername()).getId();
+        User user = existingUsers.get(0);
+        long id = userRepository.findByUsername(user.getUsername()).getId();
 
         ResultActions resultActions = mockMvc.perform(
-                get(ROOT_URL).param("id", Integer.toString(id)))
+                get(ROOT_URL).param("id", Long.toString(id)))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON));
 
@@ -120,7 +210,7 @@ public class UserControllerTest {
     @Test
     void should_get_single_user_by_username() throws Exception {
 
-        User user = initialUsers.get(0);
+        User user = existingUsers.get(0);
 
         ResultActions resultActions = mockMvc.perform(
                 get(ROOT_URL).param("username", user.getUsername()))
@@ -133,12 +223,12 @@ public class UserControllerTest {
     @Test
     void should_get_single_user_by_both() throws Exception {
 
-        User user = initialUsers.get(0);
-        int id = userRepository.findByUsername(user.getUsername()).getId();
+        User user = existingUsers.get(0);
+        long id = userRepository.findByUsername(user.getUsername()).getId();
 
         ResultActions resultActions = mockMvc.perform(get(ROOT_URL)
                 .param("username", user.getUsername())
-                .param("id", Integer.toString(id)))
+                .param("id", Long.toString(id)))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON));
 
@@ -148,24 +238,27 @@ public class UserControllerTest {
     @Test
     void should_get_not_found_error_by_both() throws Exception {
 
-        User user = initialUsers.get(0);
-        int id = 99999999;
+        User user = existingUsers.get(0);
+        long id = 99999999L;
 
-        ResultActions resultActions = mockMvc.perform(get(ROOT_URL)
+        mockMvc.perform(get(ROOT_URL)
                 .param("username", user.getUsername())
-                .param("id", Integer.toString(id)))
+                .param("id", Long.toString(id)))
                 .andExpect(status().isNotFound());
     }
 
     @Test
     void should_get_all_users() throws Exception {
 
-        ResultActions resultActions = mockMvc.perform(get(ROOT_URL + "/list"))
+        ResultActions resultActions = mockMvc.perform(get(ROOT_URL + "/list")
+                .param("pageSize", "10")
+                .param("pageIndex", "1"))
+
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$", hasSize(initialUsers.size())));
+                .andExpect(jsonPath("$", hasSize(existingUsers.size())));
 
-        validateListUserResult(resultActions, initialUsers);
+        validateListUserResult(resultActions, existingUsers);
     }
 
     void validateSingleUserResult(ResultActions resultActions, User user) throws Exception {
@@ -175,7 +268,7 @@ public class UserControllerTest {
                 .andExpect(jsonPath("$.gender",   is(user.getGender())))
                 .andExpect(jsonPath("$.email",    is(user.getEmail())))
                 .andExpect(jsonPath("$.phone",    is(user.getPhone())))
-                .andExpect(jsonPath("$.votes",    is(10)));
+                .andExpect(jsonPath("$.votes",    is(user.getVotes())));
     }
 
     void validateListUserResult(ResultActions resultActions, List<User> users) throws Exception {
@@ -187,15 +280,15 @@ public class UserControllerTest {
                     .andExpect(jsonPath(String.format("$[%d].gender"  , i), is(user.getGender())))
                     .andExpect(jsonPath(String.format("$[%d].email"   , i), is(user.getEmail())))
                     .andExpect(jsonPath(String.format("$[%d].phone"   , i), is(user.getPhone())))
-                    .andExpect(jsonPath(String.format("$[%d].votes"   , i), is(10)));
+                    .andExpect(jsonPath(String.format("$[%d].votes"   , i), is(user.getVotes())));
         }
     }
 
     @Test
     void should_get_invalid_param_error_when_add_user_given_wrong_user_param() throws Exception {
 
-        dave.setPhone(null);
-        String serialized = new ObjectMapper().writeValueAsString(dave);
+        newUser.setPhone(null);
+        String serialized = new ObjectMapper().writeValueAsString(newUser);
 
         mockMvc.perform(post(ROOT_URL)
                 .accept(MediaType.APPLICATION_JSON)
@@ -206,35 +299,6 @@ public class UserControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.error", is("invalid param")));
-    }
-
-    @Test
-    void should_delete_user_given_id() throws Exception {
-
-        int index = 0;
-        int id = userRepository.findByUsername(initialUsers.get(index).getUsername()).getId();
-
-        mockMvc.perform(delete(ROOT_URL)
-                .param("id", Integer.toString(id))
-                .accept(MediaType.APPLICATION_JSON)
-                .contentType(MediaType.APPLICATION_JSON)
-                .characterEncoding(StandardCharsets.UTF_8.name()))
-
-                .andExpect(status().isOk());
-    }
-
-    @Test
-    void should_get_not_found_when_delete_given_non_existent_id() throws Exception {
-
-        int id = 99999999;
-
-        mockMvc.perform(delete(ROOT_URL)
-                .param("id", Integer.toString(id))
-                .accept(MediaType.APPLICATION_JSON)
-                .contentType(MediaType.APPLICATION_JSON)
-                .characterEncoding(StandardCharsets.UTF_8.name()))
-
-                .andExpect(status().isNotFound());
     }
 
 }

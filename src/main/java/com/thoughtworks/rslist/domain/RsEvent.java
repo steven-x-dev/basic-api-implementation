@@ -14,18 +14,16 @@ import javax.validation.constraints.NotNull;
 @NoArgsConstructor
 public class RsEvent {
 
-    private Integer id;
+    private Long id;
 
-    @NotNull
     private String eventName;
 
-    @NotNull
     private String keyword;
 
     @NotNull
-    private Integer userId;
+    private Long userId;
 
-    public RsEvent(@NotNull String eventName, @NotNull String keyword, @NotNull Integer userId) {
+    public RsEvent(String eventName, String keyword, @NotNull Long userId) {
         this.eventName = eventName;
         this.keyword = keyword;
         this.userId = userId;
@@ -36,6 +34,13 @@ public class RsEvent {
         eventName = rsEventPO.getEventName();
         keyword = rsEventPO.getKeyword();
         userId = rsEventPO.getUserPO().getId();
+    }
+
+    public RsEvent(RsEvent rsEvent) {
+        id = rsEvent.getId();
+        eventName = rsEvent.getEventName();
+        keyword = rsEvent.getKeyword();
+        userId = rsEvent.getUserId();
     }
 
 }

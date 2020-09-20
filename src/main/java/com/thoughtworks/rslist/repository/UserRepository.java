@@ -1,26 +1,30 @@
 package com.thoughtworks.rslist.repository;
 
 import com.thoughtworks.rslist.po.UserPO;
-import org.springframework.data.repository.CrudRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.repository.PagingAndSortingRepository;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.Optional;
-
-public interface UserRepository extends CrudRepository<UserPO, Integer> {
+public interface UserRepository extends PagingAndSortingRepository<UserPO, Long> {
 
     boolean existsByUsername(String username);
 
-    boolean existsByIdAndUsername(int id, String username);
+    boolean existsByIdAndUsername(long id, String username);
 
-    UserPO findById(int id);
+    UserPO findById(long id);
 
     UserPO findByUsername(String username);
 
-    UserPO findByIdAndUsername(int id, String username);
+    UserPO findByIdAndUsername(long id, String username);
 
+    @Transactional
     void deleteByUsername(String username);
 
-    void deleteByIdAndUsername(int id, String username);
+    @Transactional
+    void deleteByIdAndUsername(long id, String username);
 
-    List<UserPO> findAll();
+    @Override
+    Page<UserPO> findAll(Pageable pageable);
+
 }

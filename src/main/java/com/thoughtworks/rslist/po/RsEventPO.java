@@ -1,5 +1,6 @@
 package com.thoughtworks.rslist.po;
 
+import com.thoughtworks.rslist.domain.RsEvent;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -16,8 +17,9 @@ import javax.persistence.*;
 public class RsEventPO {
 
     @Id
-    @GeneratedValue
-    private int id;
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "rs_event_id_gen")
+    @SequenceGenerator(name = "rs_event_id_gen", sequenceName = "rs_event_id_seq")
+    private long id;
 
     private String eventName;
 

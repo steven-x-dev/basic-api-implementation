@@ -10,6 +10,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler({
             ResourceExistsException.class,
+            IllegalArgumentException.class,
             UserNotValidException.class,
             RsEventNotValidException.class,
             MethodArgumentNotValidException.class,

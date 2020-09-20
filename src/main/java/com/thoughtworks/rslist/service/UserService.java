@@ -6,6 +6,9 @@ import com.thoughtworks.rslist.exception.ResourceNotExistsException;
 import com.thoughtworks.rslist.po.UserPO;
 import com.thoughtworks.rslist.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -21,14 +24,15 @@ public class UserService {
         this.userRepository = userRepository;
     }
 
-    public List<User> list() {
-        List<UserPO> userPOs = userRepository.findAll();
+    public List<User> list(int pageSize, int pageIndex) {
+        Pageable pageable = PageRequest.of(pageIndex, pageSize);
+        Page<UserPO> page = userRepository.findAll(pageable);
         List<User> users = new ArrayList<>();
-        userPOs.forEach(userPO -> users.add(new User(userPO)));
+        page.forEach(userPO -> users.add(new User(userPO)));
         return users;
     }
 
-    public User findById(int id) {
+    public User findById(long id) {
         UserPO userPO = userRepository.findById(id);
         if (userPO == null) {
             return null;
@@ -46,7 +50,7 @@ public class UserService {
         }
     }
 
-    public User findByIdAndUsername(int id, String username) {
+    public User findByIdAndUsername(long id, String username) {
         UserPO userPO = userRepository.findByIdAndUsername(id, username);
         if (userPO == null) {
             return null;
@@ -55,7 +59,7 @@ public class UserService {
         }
     }
 
-    public boolean existsById(int id) {
+    public boolean existsById(long id) {
         return userRepository.existsById(id);
     }
 
@@ -63,16 +67,23 @@ public class UserService {
         return userRepository.existsByUsername(username);
     }
 
-    public int create(User user) {
+    public long create(User user) {
         if (userRepository.existsByUsername(user.getUsername())) {
             throw new ResourceExistsException("username", user.getUsername());
         }
-        UserPO userPO = new UserPO(user);
+        UserPO userPO = UserPO.builder()
+                .username(user.getUsername())
+                .gender(user.getGender())
+                .age(user.getAge())
+                .email(user.getEmail())
+                .phone(user.getPhone())
+                .votes(10)
+                .build();
         userRepository.save(userPO);
         return userPO.getId();
     }
 
-    public void deleteById(int id) {
+    public void deleteById(long id) {
         if (!userRepository.existsById(id)) {
             throw new ResourceNotExistsException("user id");
         }
@@ -86,7 +97,7 @@ public class UserService {
         userRepository.deleteByUsername(username);
     }
 
-    public void deleteByIdAndUsername(int id, String username) {
+    public void deleteByIdAndUsername(long id, String username) {
         if (!userRepository.existsByIdAndUsername(id, username)) {
             throw new ResourceNotExistsException("user with id and username", username);
         }

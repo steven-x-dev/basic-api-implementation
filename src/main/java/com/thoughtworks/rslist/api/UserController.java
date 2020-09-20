@@ -22,14 +22,31 @@ public class UserController {
     }
 
     @GetMapping(path = "/list")
-    public ResponseEntity<List<User>> list() {
-        List<User> users = userService.list();
+    public ResponseEntity<List<User>> list(@RequestParam(required = false) Integer pageSize,
+                                           @RequestParam(required = false) Integer pageIndex) {
+
+        int pageSizeInt, pageIndexInt;
+
+        if (pageSize == null)
+            pageSizeInt = 10;
+        else
+            pageSizeInt = pageSize;
+
+        if (pageIndex == null)
+            pageIndexInt = 0;
+        else
+            pageIndexInt = pageIndex;
+
+        if (pageSizeInt < 1 || pageIndexInt < 1)
+            throw new IllegalArgumentException("invalid param");
+
+        List<User> users = userService.list(pageSizeInt, pageIndexInt - 1);
         return ResponseEntity.ok(users);
     }
 
     @GetMapping
     public ResponseEntity<User> find(@RequestParam(required = false) String username,
-                                     @RequestParam(required = false) Integer id) {
+                                     @RequestParam(required = false) Long id) {
 
         if (username == null && id == null)
             throw new ParameterMissingException("username", "id");
@@ -53,15 +70,15 @@ public class UserController {
 
     @PostMapping
     public ResponseEntity register(@RequestBody @Validated User user) {
-        int newUserId = userService.create(user);
+        long newUserId = userService.create(user);
         return ResponseEntity.created(null)
-                .header("id", Integer.toString(newUserId))
+                .header("id", Long.toString(newUserId))
                 .build();
     }
 
     @DeleteMapping
     public ResponseEntity delete(@RequestParam(required = false) String username,
-                                 @RequestParam(required = false) Integer id) {
+                                 @RequestParam(required = false) Long id) {
 
         if (username == null && id == null)
             throw new ParameterMissingException("username", "id");

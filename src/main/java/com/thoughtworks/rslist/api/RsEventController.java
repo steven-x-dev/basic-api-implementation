@@ -2,6 +2,7 @@ package com.thoughtworks.rslist.api;
 
 import com.thoughtworks.rslist.domain.RsEvent;
 import com.thoughtworks.rslist.exception.ParameterMissingException;
+import com.thoughtworks.rslist.exception.RsEventNotValidException;
 import com.thoughtworks.rslist.service.RsEventService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -11,7 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping(path = "/event")
+@RequestMapping(path = "/rs")
 public class RsEventController {
 
     private final RsEventService rsEventService;
@@ -29,7 +30,7 @@ public class RsEventController {
 
     @GetMapping
     public ResponseEntity<RsEvent> find(@RequestParam(required = false) String eventName,
-                                        @RequestParam(required = false) Integer id) {
+                                        @RequestParam(required = false) Long id) {
 
         if (eventName == null && id == null)
             throw new ParameterMissingException("eventName", "id");
@@ -53,23 +54,32 @@ public class RsEventController {
 
     @PostMapping
     public ResponseEntity create(@RequestBody @Validated RsEvent event) {
-        int newEventId = rsEventService.create(event);
+
+        if (event.getEventName() == null || event.getKeyword() == null)
+            throw new RsEventNotValidException("invalid param");
+
+        long newEventId = rsEventService.create(event);
+
         return ResponseEntity.created(null)
-                .header("id", Integer.toString(newEventId))
+                .header("id", Long.toString(newEventId))
                 .build();
     }
 
-    @PatchMapping
-    public ResponseEntity update(@RequestParam int id,
-                                 @RequestBody @Validated RsEvent requested) {
+    @PatchMapping(path = "/{id}")
+    public ResponseEntity update(@PathVariable long id,
+                                 @RequestBody @Validated RsEvent updated) {
 
-        rsEventService.update(id, requested);
+        if (updated.getId() == null || updated.getId() != id) {
+            throw new RsEventNotValidException("updated entity id does not match the resource id of the request");
+        }
+
+        rsEventService.update(id, updated);
         return ResponseEntity.ok().build();
     }
 
     @DeleteMapping
     public ResponseEntity delete(@RequestParam(required = false) String eventName,
-                                 @RequestParam(required = false) Integer id) {
+                                 @RequestParam(required = false) Long id) {
 
         if (eventName == null && id == null)
             throw new ParameterMissingException("event name", "id");

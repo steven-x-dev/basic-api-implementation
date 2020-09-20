@@ -3,12 +3,16 @@ package com.thoughtworks.rslist;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.thoughtworks.rslist.domain.RsEvent;
 import com.thoughtworks.rslist.domain.User;
+import com.thoughtworks.rslist.po.RsEventPO;
+import com.thoughtworks.rslist.po.UserPO;
 import com.thoughtworks.rslist.repository.RsEventRepository;
 import com.thoughtworks.rslist.repository.UserRepository;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
@@ -24,9 +28,17 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 
 @SpringBootTest
 @AutoConfigureMockMvc
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class RsEventControllerTest {
 
-    private static final String ROOT_URL = "/event";
+    private static final boolean BULK_MODE = true;
+
+    private static final String ROOT_URL = "/rs";
+
+    private static String defaultUsername;
+    private static User defaultUser;
+    private static List<RsEvent> existingEvents;
+    private static RsEvent newEvent;
 
     @Autowired
     private MockMvc mockMvc;
@@ -41,109 +53,80 @@ class RsEventControllerTest {
         this.userRepository = userRepository;
     }
 
-    private User alice;
-    private User dave;
-    private List<RsEvent> initialRsEvents;
+    @BeforeAll
+    static void beforeAll() {
+        defaultUsername = "rimowa";
+        newEvent = new RsEvent("第四条热搜", "娱乐", null);
+    }
 
     @BeforeEach
     void setUp() {
-        rsEventRepository.deleteAll();
-        alice = new User("Alice", 20, "female", "alice@tw.com", "13000000000");
-        dave = new User("Dave", 28, "male", "dave@tw.com", "19333333333");
-        int userId = userRepository.findByUsername(alice.getUsername()).getId();
-        initialRsEvents = new ArrayList<RsEvent>() {{
-            add(new RsEvent("第一条事件", "政治", userId));
-            add(new RsEvent("第二条事件", "经济", userId));
-            add(new RsEvent("第三条事件", "文化", userId));
-        }};
-        initialRsEvents.forEach(event -> {
-            Exception exception = null;
-            try {
-                addEvent(event);
-            } catch (Exception e) {
-                exception = e;
-            }
-            assertNull(exception);
-        });
+        if (BULK_MODE) return;
+        init();
     }
 
     @Test
-    void should_find_one_rs_event_by_event_name() throws Exception {
-        for (RsEvent initialRsEvent : initialRsEvents)
-            should_find_one_rs_event_by_event_name(initialRsEvent);
+    @Order(0)
+    void setUpForBulkMode() {
+        if (!BULK_MODE) return;
+        init();
     }
 
-    private void should_find_one_rs_event_by_event_name(RsEvent event) throws Exception {
-        ResultActions resultActions = mockMvc.perform(
-                get(ROOT_URL).param("eventName", event.getEventName()))
-                .andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
-        validateSingleRsEventResult(resultActions, event);
+    private void init() {
+        UserPO defaultUserPO = userRepository.findByUsername(defaultUsername);
+
+        assertNotNull(defaultUserPO);
+        defaultUser = new User(defaultUserPO);
+
+        newEvent.setUserId(defaultUser.getId());
+
+        existingEvents = new ArrayList<>();
+        rsEventRepository.findAll().forEach(rsEventPO -> existingEvents.add(new RsEvent(rsEventPO)));
     }
 
-    @Test
-    void should_get_invalid_index_error_when_find_one_rs_event_given_non_existent_id() throws Exception {
-        int id = 99999999;
-        mockMvc.perform(
-                get(ROOT_URL).param("id", Integer.toString(id)))
-                .andExpect(status().isNotFound());
-    }
-
-    @Test
-    void should_list_all_rs_events() throws Exception {
-
-        ResultActions resultActions = mockMvc.perform(get(ROOT_URL + "/list"))
-                .andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$", hasSize(initialRsEvents.size())));
-
-        validateListRsEventResult(resultActions, initialRsEvents);
-    }
-
-    void validateSingleRsEventResult(ResultActions resultActions, RsEvent event) throws Exception {
-        resultActions
-                .andExpect(jsonPath("$.eventName", is(event.getEventName())))
-                .andExpect(jsonPath("$.keyword"  , is(event.getKeyword())))
-                .andExpect(jsonPath("$.userId"   , is(event.getUserId())));
-    }
-
-    void validateListRsEventResult(ResultActions resultActions, List<RsEvent> events) throws Exception {
-        for (int i = 0; i < events.size(); i++) {
-            RsEvent event = events.get(i);
-            resultActions
-                    .andExpect(jsonPath(String.format("$[%d].eventName", i), is(event.getEventName())))
-                    .andExpect(jsonPath(String.format("$[%d].keyword"  , i), is(event.getKeyword())))
-                    .andExpect(jsonPath(String.format("$[%d].userId"   , i), is(event.getUserId())));
+    private void setUpAndTearDownForAdd() {
+        if (rsEventRepository.existsByEventName(newEvent.getEventName())) {
+            rsEventRepository.deleteByEventName(newEvent.getEventName());
         }
     }
 
     @Test
+    @Order(1)
     void should_add_rs_event_and_get_returned_id() throws Exception {
 
-        int userId = userRepository.findByUsername(alice.getUsername()).getId();
-        RsEvent added = new RsEvent("第四条事件", "娱乐", userId);
+        setUpAndTearDownForAdd();
 
-        addEvent(added)
-                .andExpect(status().isCreated())
-                .andExpect(header().string("id", any(String.class)));
-    }
+        long countBefore = rsEventRepository.count();
 
-    private ResultActions addEvent(RsEvent added) throws Exception {
+        String serialized = new ObjectMapper().writeValueAsString(newEvent);
 
-        String serialized = new ObjectMapper().writeValueAsString(added);
-
-        return mockMvc.perform(post(ROOT_URL)
+        mockMvc.perform(post(ROOT_URL)
                 .accept(MediaType.APPLICATION_JSON)
                 .contentType(MediaType.APPLICATION_JSON)
                 .characterEncoding(StandardCharsets.UTF_8.name())
-                .content(serialized));
+                .content(serialized))
+
+                .andExpect(status().isCreated())
+                .andExpect(header().string("id", any(String.class)))
+                .andDo(result -> {
+                    String headerId = result.getResponse().getHeader("id");
+                    if (headerId != null) {
+                        newEvent.setId(Long.parseLong(headerId));
+                    } else {
+                        fail();
+                    }
+                });
+
+        assertEquals(countBefore + 1, rsEventRepository.count());
+
+        setUpAndTearDownForAdd();
     }
 
     @Test
+    @Order(2)
     void should_get_invalid_param_error_when_add_event_given_wrong_param() throws Exception {
 
-        int userId = userRepository.findByUsername(alice.getUsername()).getId();
-        RsEvent added = new RsEvent("第四条事件", null, userId);
+        RsEvent added = new RsEvent(newEvent.getEventName(), null, defaultUser.getId());
 
         String serialized = new ObjectMapper().writeValueAsString(added);
 
@@ -159,10 +142,10 @@ class RsEventControllerTest {
     }
 
     @Test
+    @Order(3)
     void should_get_event_name_exists_error_when_add_event_given_existing_event_name() throws Exception {
 
-        int userId = userRepository.findByUsername(alice.getUsername()).getId();
-        RsEvent added = new RsEvent("第三条事件", "娱乐", userId);
+        RsEvent added = new RsEvent(existingEvents.get(0).getEventName(), newEvent.getKeyword(), defaultUser.getId());
 
         String serialized = new ObjectMapper().writeValueAsString(added);
 
@@ -178,9 +161,10 @@ class RsEventControllerTest {
     }
 
     @Test
+    @Order(4)
     void should_get_user_not_exists_error_when_add_event_given_non_existent_user_id() throws Exception {
 
-        RsEvent added = new RsEvent("第四条事件", "娱乐", 99999999);
+        RsEvent added = new RsEvent(newEvent.getEventName(), newEvent.getKeyword(), 99999999L);
         String serialized = new ObjectMapper().writeValueAsString(added);
 
         mockMvc.perform(post(ROOT_URL)
@@ -194,112 +178,33 @@ class RsEventControllerTest {
                 .andExpect(jsonPath("$.error", is("user does not exist")));
     }
 
-    @Test
-    void should_update_one_rs_event_when_supplying_one_or_more_field_given_id() throws Exception {
-
-        int index1 = 2;
-
-        RsEvent keywordUpdated = initialRsEvents.get(index1);
-        int id1 = rsEventRepository.findByEventName(keywordUpdated.getEventName()).getId();
-        keywordUpdated.setKeyword("时事");
-        String serializedKeywordUpdated = new ObjectMapper().writeValueAsString(keywordUpdated);
-
-        mockMvc.perform(patch(ROOT_URL)
-                .param("id", Integer.toString(id1))
-                .accept(MediaType.APPLICATION_JSON)
-                .contentType(MediaType.APPLICATION_JSON)
-                .characterEncoding(StandardCharsets.UTF_8.name())
-                .content(serializedKeywordUpdated))
-
-                .andExpect(status().isOk());
-
-        int index2 = 1;
-
-        RsEvent nameUpdated = initialRsEvents.get(index2);
-        int id2 = rsEventRepository.findByEventName(nameUpdated.getEventName()).getId();
-        keywordUpdated.setEventName("第二条热搜");
-        String serializedNameUpdated = new ObjectMapper().writeValueAsString(nameUpdated);
-
-        mockMvc.perform(patch(ROOT_URL)
-                .param("id", Integer.toString(id2))
-                .accept(MediaType.APPLICATION_JSON)
-                .contentType(MediaType.APPLICATION_JSON)
-                .characterEncoding(StandardCharsets.UTF_8.name())
-                .content(serializedNameUpdated))
-
-                .andExpect(status().isOk());
-
-        int index3 = 0;
-
-        RsEvent bothUpdated = initialRsEvents.get(index3);
-        int id3 = rsEventRepository.findByEventName(bothUpdated.getEventName()).getId();
-        bothUpdated.setEventName("第一条热搜");
-        bothUpdated.setKeyword("历史");
-        String serializedBothUpdated = new ObjectMapper().writeValueAsString(bothUpdated);
-
-        mockMvc.perform(patch(ROOT_URL)
-                .param("id", Integer.toString(id3))
-                .accept(MediaType.APPLICATION_JSON)
-                .contentType(MediaType.APPLICATION_JSON)
-                .characterEncoding(StandardCharsets.UTF_8.name())
-                .content(serializedBothUpdated))
-
-                .andExpect(status().isOk());
+    private void setUpForDelete() {
+        if (!rsEventRepository.existsByEventName(newEvent.getEventName())) {
+            long defaultUserId = defaultUser.getId();
+            UserPO defaultUserPO = userRepository.findById(defaultUserId);
+            RsEventPO newEventPO = RsEventPO.builder()
+                    .eventName(newEvent.getEventName())
+                    .keyword(newEvent.getKeyword())
+                    .userPO(defaultUserPO)
+                    .build();
+            rsEventRepository.save(newEventPO);
+            newEvent.setId(newEventPO.getId());
+        }
     }
 
     @Test
-    void should_get_invalid_param_error_when_update_given_wrong_param() throws Exception {
+    @Order(5)
+    void should_delete_event_given_id() throws Exception {
 
-        int index = 0;
+        setUpForDelete();
 
-        RsEvent keywordUpdated = initialRsEvents.get(index);
-        int id = rsEventRepository.findByEventName(keywordUpdated.getEventName()).getId();
-        keywordUpdated.setKeyword(null);
-        String serializedKeywordUpdated = new ObjectMapper().writeValueAsString(keywordUpdated);
-
-        mockMvc.perform(patch(ROOT_URL)
-                .param("id", Integer.toString(id))
-                .accept(MediaType.APPLICATION_JSON)
-                .contentType(MediaType.APPLICATION_JSON)
-                .characterEncoding(StandardCharsets.UTF_8.name())
-                .content(serializedKeywordUpdated))
-
-                .andExpect(status().isBadRequest())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.error", is("invalid param")));
-    }
-
-    @Test
-    void should_get_not_found_when_update_given_non_existent_id() throws Exception {
-
-        int index = 0;
-        int id = 99999999;
-
-        RsEvent updated = initialRsEvents.get(index);
-        String serializedKeywordUpdated = new ObjectMapper().writeValueAsString(updated);
-
-        mockMvc.perform(patch(ROOT_URL)
-                .param("id", Integer.toString(id))
-                .accept(MediaType.APPLICATION_JSON)
-                .contentType(MediaType.APPLICATION_JSON)
-                .characterEncoding(StandardCharsets.UTF_8.name())
-                .content(serializedKeywordUpdated))
-
-                .andExpect(status().isNotFound());
-    }
-
-    @Test
-    void should_delete_given_index() throws Exception {
-
-        int index = 1;
-
-        RsEvent deleted = initialRsEvents.get(index);
-        int id = rsEventRepository.findByEventName(deleted.getEventName()).getId();
+        assertNotNull(newEvent.getId());
+        long id = newEvent.getId();
 
         long countBefore = rsEventRepository.count();
 
         mockMvc.perform(delete(ROOT_URL)
-                .param("id", Integer.toString(id))
+                .param("id", Long.toString(id))
                 .accept(MediaType.APPLICATION_JSON)
                 .contentType(MediaType.APPLICATION_JSON)
                 .characterEncoding(StandardCharsets.UTF_8.name()))
@@ -312,15 +217,220 @@ class RsEventControllerTest {
     @Test
     void should_get_not_found_when_delete_given_non_existent_id() throws Exception {
 
-        int id = 99999999;
+        long id = 99999999L;
 
         mockMvc.perform(delete(ROOT_URL)
-                .param("id", Integer.toString(id))
+                .param("id", Long.toString(id))
                 .accept(MediaType.APPLICATION_JSON)
                 .contentType(MediaType.APPLICATION_JSON)
                 .characterEncoding(StandardCharsets.UTF_8.name()))
 
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void should_find_one_rs_event_by_event_name() throws Exception {
+        for (RsEvent event : existingEvents) {
+            ResultActions resultActions = mockMvc.perform(
+                    get(ROOT_URL).param("eventName", event.getEventName()))
+                    .andExpect(status().isOk())
+                    .andExpect(content().contentType(MediaType.APPLICATION_JSON));
+            validateSingleRsEventResult(resultActions, event);
+        }
+    }
+
+    @Test
+    void should_get_invalid_index_error_when_find_one_rs_event_given_non_existent_id() throws Exception {
+        long id = 99999999L;
+        mockMvc.perform(
+                get(ROOT_URL).param("id", Long.toString(id)))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void should_list_all_rs_events() throws Exception {
+
+        ResultActions resultActions = mockMvc.perform(get(ROOT_URL + "/list"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$", hasSize(existingEvents.size())));
+
+        validateListRsEventResult(resultActions, existingEvents);
+    }
+
+    void validateSingleRsEventResult(ResultActions resultActions, RsEvent event) throws Exception {
+        resultActions
+                .andExpect(jsonPath("$.eventName", is(event.getEventName())))
+                .andExpect(jsonPath("$.keyword"  , is(event.getKeyword())))
+                .andExpect(jsonPath("$.userId"   , is(event.getUserId()), Long.class));
+    }
+
+    void validateListRsEventResult(ResultActions resultActions, List<RsEvent> events) throws Exception {
+        for (int i = 0; i < events.size(); i++) {
+            RsEvent event = events.get(i);
+            resultActions
+                    .andExpect(jsonPath(String.format("$[%d].eventName", i), is(event.getEventName())))
+                    .andExpect(jsonPath(String.format("$[%d].keyword"  , i), is(event.getKeyword())))
+                    .andExpect(jsonPath(String.format("$[%d].userId"   , i), is(event.getUserId()), Long.class));
+        }
+    }
+
+    @Test
+    void should_update_one_rs_event_when_supplying_event_name_given_id() throws Exception {
+
+        int index = 2;
+
+        ObjectMapper objectMapper = new ObjectMapper();
+
+        RsEvent original = existingEvents.get(index);
+        RsEvent updated = new RsEvent(original);
+
+        long id = original.getId();
+
+        updated.setEventName(null);
+        updated.setKeyword("新关键词");
+
+        String serializedUpdated = objectMapper.writeValueAsString(updated);
+        performUpdateAndValidate(id, serializedUpdated);
+
+        String serializedOriginal = objectMapper.writeValueAsString(original);
+        performUpdateAndValidate(id, serializedOriginal);
+    }
+
+    @Test
+    void should_update_one_rs_event_when_supplying_keyword_given_id() throws Exception {
+
+        int index = 1;
+
+        ObjectMapper objectMapper = new ObjectMapper();
+
+        RsEvent original = existingEvents.get(index);
+        RsEvent updated = new RsEvent(original);
+
+        long id = original.getId();
+
+        updated.setEventName("新热搜");
+        updated.setKeyword(null);
+
+        String serializedUpdated = objectMapper.writeValueAsString(updated);
+        performUpdateAndValidate(id, serializedUpdated);
+
+        String serializedOriginal = objectMapper.writeValueAsString(original);
+        performUpdateAndValidate(id, serializedOriginal);
+    }
+
+
+    @Test
+    void should_update_one_rs_event_when_supplying_both_fields_given_id() throws Exception {
+
+        int index = 0;
+
+        ObjectMapper objectMapper = new ObjectMapper();
+
+        RsEvent original = existingEvents.get(index);
+        RsEvent updated = new RsEvent(original);
+
+        long id = original.getId();
+
+        updated.setEventName("新关键词热搜");
+        updated.setKeyword("新关键词");
+
+        String serializedUpdated = objectMapper.writeValueAsString(updated);
+        performUpdateAndValidate(id, serializedUpdated);
+
+        String serializedOriginal = objectMapper.writeValueAsString(original);
+        performUpdateAndValidate(id, serializedOriginal);
+    }
+
+    private void performUpdateAndValidate(long id, String serializedUpdated) throws Exception {
+        mockMvc.perform(patch(ROOT_URL + "/" + id)
+                .accept(MediaType.APPLICATION_JSON)
+                .contentType(MediaType.APPLICATION_JSON)
+                .characterEncoding(StandardCharsets.UTF_8.name())
+                .content(serializedUpdated))
+
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void should_get_invalid_param_error_when_update_given_null_user_id() throws Exception {
+
+        int index = 0;
+
+        RsEvent updated = new RsEvent(existingEvents.get(index));
+        updated.setUserId(null);
+        String serializedUpdated = new ObjectMapper().writeValueAsString(updated);
+
+        mockMvc.perform(patch(ROOT_URL + "/" + updated.getId())
+                .accept(MediaType.APPLICATION_JSON)
+                .contentType(MediaType.APPLICATION_JSON)
+                .characterEncoding(StandardCharsets.UTF_8.name())
+                .content(serializedUpdated))
+
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.error", is("invalid param")));
+    }
+
+    @Test
+    void should_get_bad_request_when_update_given_tampered_user_id() throws Exception {
+
+        int index = 0;
+
+        RsEvent updated = new RsEvent(existingEvents.get(index));
+        updated.setUserId(updated.getUserId() + 1);
+        String serializedUpdated = new ObjectMapper().writeValueAsString(updated);
+
+        mockMvc.perform(patch(ROOT_URL + "/" + updated.getId())
+                .accept(MediaType.APPLICATION_JSON)
+                .contentType(MediaType.APPLICATION_JSON)
+                .characterEncoding(StandardCharsets.UTF_8.name())
+                .content(serializedUpdated))
+
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.error", is("user id incorrect")));
+    }
+
+    @Test
+    void should_get_not_found_when_update_given_non_existent_id() throws Exception {
+
+        int index = 0;
+        long id = 99999999L;
+
+        RsEvent updated = new RsEvent(existingEvents.get(index));
+        updated.setId(id);
+        String serializedUpdated = new ObjectMapper().writeValueAsString(updated);
+
+        mockMvc.perform(patch(ROOT_URL  + "/" + id)
+                .accept(MediaType.APPLICATION_JSON)
+                .contentType(MediaType.APPLICATION_JSON)
+                .characterEncoding(StandardCharsets.UTF_8.name())
+                .content(serializedUpdated))
+
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void should_get_entity_id_not_match_requested_resource_id_error_when_update_given_non_existent_id() throws Exception {
+
+        int index = 0;
+
+        RsEvent original = existingEvents.get(index);
+        RsEvent updated = new RsEvent(original);
+
+        updated.setId(original.getId() + 1);
+        String serializedUpdated = new ObjectMapper().writeValueAsString(updated);
+
+        mockMvc.perform(patch(ROOT_URL  + "/" + original.getId())
+                .accept(MediaType.APPLICATION_JSON)
+                .contentType(MediaType.APPLICATION_JSON)
+                .characterEncoding(StandardCharsets.UTF_8.name())
+                .content(serializedUpdated))
+
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.error", is("updated entity id does not match the resource id of the request")));
     }
 
 }

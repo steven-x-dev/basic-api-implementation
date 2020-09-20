@@ -34,7 +34,7 @@ public class RsEventService {
         return events;
     }
 
-    public RsEvent findById(int id) {
+    public RsEvent findById(long id) {
         RsEventPO rsEventPO = rsEventRepository.findById(id);
         if (rsEventPO == null) {
             return null;
@@ -52,7 +52,7 @@ public class RsEventService {
         }
     }
 
-    public RsEvent findByIdAndEventName(int id, String eventName) {
+    public RsEvent findByIdAndEventName(long id, String eventName) {
         RsEventPO rsEventPO = rsEventRepository.findByIdAndEventName(id, eventName);
         if (rsEventPO == null) {
             return null;
@@ -61,7 +61,7 @@ public class RsEventService {
         }
     }
 
-    public int create(RsEvent event) {
+    public long create(RsEvent event) {
 
         if (!userRepository.existsById(event.getUserId()))
             throw new RsEventNotValidException("user does not exist");
@@ -69,7 +69,7 @@ public class RsEventService {
         if (rsEventRepository.existsByEventName(event.getEventName()))
             throw new ResourceExistsException("event name", event.getEventName());
 
-        int userId = event.getUserId();
+        long userId = event.getUserId();
         UserPO userPO = userRepository.findById(userId);
 
         RsEventPO rsEventPO = RsEventPO.builder()
@@ -83,20 +83,26 @@ public class RsEventService {
         return rsEventPO.getId();
     }
 
-    public void update(int id, RsEvent updated) {
+    public void update(long id, RsEvent updated) {
 
         if (!rsEventRepository.existsById(id))
             throw new ResourceNotExistsException("event id");
 
         RsEventPO existing = rsEventRepository.findById(id);
 
-        existing.setEventName(updated.getEventName());
-        existing.setKeyword(updated.getKeyword());
+        if (updated.getUserId() != existing.getUserPO().getId())
+            throw new RsEventNotValidException("user id incorrect");
+
+        if (updated.getEventName() != null)
+            existing.setEventName(updated.getEventName());
+
+        if (updated.getKeyword() != null)
+            existing.setKeyword(updated.getKeyword());
 
         rsEventRepository.save(existing);
     }
 
-    public void deleteById(int id) {
+    public void deleteById(long id) {
         if (!rsEventRepository.existsById(id)) {
             throw new ResourceNotExistsException("event id");
         }
@@ -110,7 +116,7 @@ public class RsEventService {
         rsEventRepository.deleteByEventName(eventName);
     }
 
-    public void deleteByIdAndEventName(int id, String eventName) {
+    public void deleteByIdAndEventName(long id, String eventName) {
         if (!rsEventRepository.existsByIdAndEventName(id, eventName)) {
             throw new ResourceNotExistsException("event with id and name", eventName);
         }

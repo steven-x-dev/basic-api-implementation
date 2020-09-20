@@ -18,8 +18,9 @@ import java.util.List;
 public class UserPO {
 
     @Id
-    @GeneratedValue
-    private int id;
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "user_id_gen")
+    @SequenceGenerator(name = "user_id_gen", sequenceName = "user_id_seq")
+    private long id;
 
     private String username;
 
@@ -35,14 +36,5 @@ public class UserPO {
 
     @OneToMany(cascade = CascadeType.REMOVE, mappedBy = "userPO")
     private List<RsEventPO> rsEventPOs;
-
-    public UserPO(User user) {
-        username = user.getUsername();
-        gender = user.getGender();
-        age = user.getAge();
-        email = user.getEmail();
-        phone = user.getPhone();
-        votes = 10;
-    }
 
 }
